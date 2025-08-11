@@ -1,0 +1,363 @@
+# Dynamic Jobs & Economy Pro - Comprehensive Permissions Configuration
+# This file defines all permission nodes for the plugin
+# Use with LuckPerms, PermissionsEx, or any compatible permissions plugin
+
+# ==================== PERMISSION STRUCTURE ====================
+# Base: djeconomy
+# Format: djeconomy.<category>.<action>
+# Categories: business, position, employee, job, location, processing, contract, gui, revenue, analytics, admin, system, limit
+
+permissions:
+  # ==================== CORE BUSINESS PERMISSIONS ====================
+  djeconomy.business.create:
+    description: "Create new businesses"
+    default: true
+  djeconomy.business.delete:
+    description: "Delete owned businesses"
+    default: true
+  djeconomy.business.view:
+    description: "View business information"
+    default: true
+  djeconomy.business.edit:
+    description: "Edit owned businesses"
+    default: true
+  djeconomy.business.list:
+    description: "List businesses"
+    default: true
+  djeconomy.business.info:
+    description: "View detailed business information"
+    default: true
+  djeconomy.business.deposit:
+    description: "Deposit money into businesses"
+    default: true
+  djeconomy.business.withdraw:
+    description: "Withdraw money from owned businesses"
+    default: true
+  djeconomy.business.balance:
+    description: "View business balance"
+    default: true
+  djeconomy.business.transfer:
+    description: "Transfer money between businesses"
+    default: true
+
+  # ==================== EMPLOYEE MANAGEMENT PERMISSIONS ====================
+  djeconomy.position.create:
+    description: "Create business positions"
+    default: true
+  djeconomy.position.delete:
+    description: "Delete business positions"
+    default: true
+  djeconomy.position.edit:
+    description: "Edit business positions"
+    default: true
+  djeconomy.position.list:
+    description: "List business positions"
+    default: true
+  djeconomy.position.activate:
+    description: "Activate business positions"
+    default: true
+  djeconomy.position.deactivate:
+    description: "Deactivate business positions"
+    default: true
+
+  djeconomy.employee.hire:
+    description: "Hire employees to businesses"
+    default: true
+  djeconomy.employee.fire:
+    description: "Fire employees from businesses"
+    default: true
+  djeconomy.employee.promote:
+    description: "Promote employees between positions"
+    default: true
+  djeconomy.employee.list:
+    description: "List business employees"
+    default: true
+  djeconomy.employee.view:
+    description: "View employee details"
+    default: true
+  djeconomy.employee.notes:
+    description: "Add notes to employee records"
+    default: true
+  djeconomy.employee.history:
+    description: "View employee history"
+    default: true
+
+  djeconomy.job.apply:
+    description: "Apply for job positions"
+    default: true
+  djeconomy.job.accept:
+    description: "Accept job offers"
+    default: true
+  djeconomy.job.reject:
+    description: "Reject job offers"
+    default: true
+  djeconomy.job.view:
+    description: "View available job offers"
+    default: true
+
+  # ==================== MINECRAFT-VIABLE FEATURES PERMISSIONS ====================
+  djeconomy.location.create:
+    description: "Create business locations"
+    default: true
+  djeconomy.location.delete:
+    description: "Delete business locations"
+    default: true
+  djeconomy.location.edit:
+    description: "Edit business locations"
+    default: true
+  djeconomy.location.list:
+    description: "List business locations"
+    default: true
+  djeconomy.location.teleport:
+    description: "Teleport to business locations"
+    default: true
+  djeconomy.location.worldguard:
+    description: "Create WorldGuard regions for locations"
+    default: false
+
+  djeconomy.processing.create:
+    description: "Create resource processing chains"
+    default: true
+  djeconomy.processing.delete:
+    description: "Delete resource processing chains"
+    default: true
+  djeconomy.processing.edit:
+    description: "Edit resource processing chains"
+    default: true
+  djeconomy.processing.list:
+    description: "List resource processing chains"
+    default: true
+  djeconomy.processing.start:
+    description: "Start resource processing"
+    default: true
+  djeconomy.processing.stop:
+    description: "Stop resource processing"
+    default: true
+
+  djeconomy.contract.create:
+    description: "Create construction contracts"
+    default: true
+  djeconomy.contract.delete:
+    description: "Delete construction contracts"
+    default: true
+  djeconomy.contract.edit:
+    description: "Edit construction contracts"
+    default: true
+  djeconomy.contract.list:
+    description: "List construction contracts"
+    default: true
+  djeconomy.contract.accept:
+    description: "Accept construction contracts"
+    default: true
+  djeconomy.contract.complete:
+    description: "Mark contracts as complete"
+    default: true
+  djeconomy.contract.cancel:
+    description: "Cancel construction contracts"
+    default: true
+
+  djeconomy.gui.access:
+    description: "Access business GUI interface"
+    default: true
+  djeconomy.gui.admin:
+    description: "Access admin GUI features"
+    default: false
+
+  # ==================== REVENUE AND ANALYTICS PERMISSIONS ====================
+  djeconomy.revenue.view:
+    description: "View business revenue"
+    default: true
+  djeconomy.revenue.generate:
+    description: "Generate business revenue"
+    default: true
+  djeconomy.revenue.history:
+    description: "View revenue history"
+    default: true
+  djeconomy.revenue.model.set:
+    description: "Set business revenue model"
+    default: true
+  djeconomy.revenue.model.list:
+    description: "List available revenue models"
+    default: true
+
+  djeconomy.analytics.performance:
+    description: "View performance reports"
+    default: true
+  djeconomy.analytics.productivity:
+    description: "View productivity reports"
+    default: true
+  djeconomy.analytics.effectiveness:
+    description: "View effectiveness reports"
+    default: true
+  djeconomy.analytics.profitability:
+    description: "View profitability reports"
+    default: true
+  djeconomy.analytics.position:
+    description: "View position analytics"
+    default: true
+
+  # ==================== ADMINISTRATIVE PERMISSIONS ====================
+  djeconomy.admin:
+    description: "Full administrative access"
+    default: op
+    children:
+      - djeconomy.admin.revenue.manual
+      - djeconomy.admin.delete.any
+      - djeconomy.admin.view.any
+      - djeconomy.admin.edit.any
+      - djeconomy.admin.hire.force
+      - djeconomy.admin.fire.force
+      - djeconomy.gui.admin
+      - djeconomy.system.reload
+      - djeconomy.system.debug
+      - djeconomy.system.backup
+
+  djeconomy.admin.revenue.manual:
+    description: "Manually generate revenue for any business"
+    default: false
+  djeconomy.admin.delete.any:
+    description: "Delete any business or component"
+    default: false
+  djeconomy.admin.view.any:
+    description: "View any business information"
+    default: false
+  djeconomy.admin.edit.any:
+    description: "Edit any business"
+    default: false
+  djeconomy.admin.hire.force:
+    description: "Force hire employees without consent"
+    default: false
+  djeconomy.admin.fire.force:
+    description: "Force fire employees from any business"
+    default: false
+
+  djeconomy.system.reload:
+    description: "Reload plugin configuration"
+    default: false
+  djeconomy.system.debug:
+    description: "Access debug information"
+    default: false
+  djeconomy.system.backup:
+    description: "Create system backups"
+    default: false
+
+  # ==================== LIMIT PERMISSIONS ====================
+  djeconomy.limit.business.unlimited:
+    description: "Create unlimited businesses"
+    default: false
+  djeconomy.limit.employee.unlimited:
+    description: "Hire unlimited employees"
+    default: false
+  djeconomy.limit.position.unlimited:
+    description: "Create unlimited positions"
+    default: false
+  djeconomy.limit.location.unlimited:
+    description: "Create unlimited locations"
+    default: false
+  djeconomy.limit.contract.unlimited:
+    description: "Create unlimited contracts"
+    default: false
+
+  # Specific numeric limits (examples)
+  djeconomy.limit.business.5:
+    description: "Create up to 5 businesses"
+    default: false
+  djeconomy.limit.business.10:
+    description: "Create up to 10 businesses"
+    default: false
+  djeconomy.limit.employee.25:
+    description: "Hire up to 25 employees per business"
+    default: false
+  djeconomy.limit.employee.50:
+    description: "Hire up to 50 employees per business"
+    default: false
+  djeconomy.limit.position.10:
+    description: "Create up to 10 positions per business"
+    default: false
+  djeconomy.limit.position.20:
+    description: "Create up to 20 positions per business"
+    default: false
+
+# ==================== PERMISSION GROUPS (EXAMPLES) ====================
+# These are example groups that can be used with permissions plugins
+
+groups:
+  business_owner:
+    description: "Standard business owner permissions"
+    permissions:
+      - djeconomy.business.*
+      - djeconomy.position.*
+      - djeconomy.employee.*
+      - djeconomy.job.*
+      - djeconomy.location.*
+      - djeconomy.processing.*
+      - djeconomy.contract.*
+      - djeconomy.gui.access
+      - djeconomy.revenue.*
+      - djeconomy.analytics.*
+      - djeconomy.limit.business.3
+      - djeconomy.limit.employee.15
+      - djeconomy.limit.position.8
+
+  premium_owner:
+    description: "Premium business owner with extended limits"
+    permissions:
+      - djeconomy.business.*
+      - djeconomy.position.*
+      - djeconomy.employee.*
+      - djeconomy.job.*
+      - djeconomy.location.*
+      - djeconomy.processing.*
+      - djeconomy.contract.*
+      - djeconomy.gui.access
+      - djeconomy.revenue.*
+      - djeconomy.analytics.*
+      - djeconomy.location.worldguard
+      - djeconomy.limit.business.10
+      - djeconomy.limit.employee.50
+      - djeconomy.limit.position.20
+
+  employee:
+    description: "Basic employee permissions"
+    permissions:
+      - djeconomy.business.view
+      - djeconomy.business.list
+      - djeconomy.business.info
+      - djeconomy.job.apply
+      - djeconomy.job.accept
+      - djeconomy.job.reject
+      - djeconomy.job.view
+      - djeconomy.gui.access
+
+  moderator:
+    description: "Moderator permissions for business oversight"
+    permissions:
+      - djeconomy.business.*
+      - djeconomy.position.*
+      - djeconomy.employee.*
+      - djeconomy.job.*
+      - djeconomy.location.*
+      - djeconomy.processing.*
+      - djeconomy.contract.*
+      - djeconomy.gui.access
+      - djeconomy.gui.admin
+      - djeconomy.revenue.*
+      - djeconomy.analytics.*
+      - djeconomy.admin.view.any
+      - djeconomy.admin.edit.any
+
+  administrator:
+    description: "Full administrative access"
+    permissions:
+      - djeconomy.admin
+
+# ==================== USAGE EXAMPLES ====================
+# LuckPerms Commands:
+# /lp group create business_owner
+# /lp group business_owner permission set djeconomy.business.* true
+# /lp user <player> parent add business_owner
+#
+# PermissionsEx Commands:
+# /pex group create business_owner
+# /pex group business_owner add djeconomy.business.*
+# /pex user <player> group add business_owner

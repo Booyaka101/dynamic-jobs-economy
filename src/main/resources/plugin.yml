@@ -1,0 +1,523 @@
+name: DynamicJobsEconomy
+version: '${project.version}'
+main: com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy
+api-version: 1.20
+authors: [BooPug Studios]
+description: Advanced job and economy plugin with Minecraft-viable business improvements, physical locations, resource processing, and construction contracts
+website: https://boopugstudios.com
+
+depend: []
+softdepend: [Vault, WorldGuard, McMMO, LuckPerms, ShopGUIPlus]
+
+permissions:
+  # ==================== COMPREHENSIVE BUSINESS PERMISSIONS ====================
+  djeconomy.*:
+    description: Full access to all Dynamic Jobs & Economy features
+    default: op
+    children:
+      djeconomy.business.*: true
+      djeconomy.position.*: true
+      djeconomy.employee.*: true
+      djeconomy.job.*: true
+      djeconomy.location.*: true
+      djeconomy.processing.*: true
+      djeconomy.contract.*: true
+      djeconomy.gui.*: true
+      djeconomy.revenue.*: true
+      djeconomy.analytics.*: true
+      djeconomy.admin: true
+      djeconomy.system.*: true
+      djeconomy.limit.*: true
+
+  # Core Business Operations
+  djeconomy.business.*:
+    description: All basic business operations
+    default: true
+    children:
+      djeconomy.business.create: true
+      djeconomy.business.delete: true
+      djeconomy.business.view: true
+      djeconomy.business.edit: true
+      djeconomy.business.list: true
+      djeconomy.business.info: true
+      djeconomy.business.deposit: true
+      djeconomy.business.withdraw: true
+      djeconomy.business.balance: true
+      djeconomy.business.transfer: true
+
+  djeconomy.business.create:
+    description: Create new businesses
+    default: true
+  djeconomy.business.delete:
+    description: Delete owned businesses
+    default: true
+  djeconomy.business.view:
+    description: View business information
+    default: true
+  djeconomy.business.edit:
+    description: Edit owned businesses
+    default: true
+  djeconomy.business.list:
+    description: List businesses
+    default: true
+  djeconomy.business.info:
+    description: View detailed business information
+    default: true
+  djeconomy.business.deposit:
+    description: Deposit money into businesses
+    default: true
+  djeconomy.business.withdraw:
+    description: Withdraw money from owned businesses
+    default: true
+  djeconomy.business.balance:
+    description: View business balance
+    default: true
+  djeconomy.business.transfer:
+    description: Transfer money between businesses
+    default: true
+
+  # Position Management
+  djeconomy.position.*:
+    description: All position management operations
+    default: true
+    children:
+      djeconomy.position.create: true
+      djeconomy.position.delete: true
+      djeconomy.position.edit: true
+      djeconomy.position.list: true
+      djeconomy.position.activate: true
+      djeconomy.position.deactivate: true
+
+  djeconomy.position.create:
+    description: Create business positions
+    default: true
+  djeconomy.position.delete:
+    description: Delete business positions
+    default: true
+  djeconomy.position.edit:
+    description: Edit business positions
+    default: true
+  djeconomy.position.list:
+    description: List business positions
+    default: true
+  djeconomy.position.activate:
+    description: Activate business positions
+    default: true
+  djeconomy.position.deactivate:
+    description: Deactivate business positions
+    default: true
+
+  # Employee Management
+  djeconomy.employee.*:
+    description: All employee management operations
+    default: true
+    children:
+      djeconomy.employee.hire: true
+      djeconomy.employee.fire: true
+      djeconomy.employee.promote: true
+      djeconomy.employee.list: true
+      djeconomy.employee.view: true
+      djeconomy.employee.notes: true
+      djeconomy.employee.history: true
+
+  djeconomy.employee.hire:
+    description: Hire employees to businesses
+    default: true
+  djeconomy.employee.fire:
+    description: Fire employees from businesses
+    default: true
+  djeconomy.employee.promote:
+    description: Promote employees between positions
+    default: true
+  djeconomy.employee.list:
+    description: List business employees
+    default: true
+  djeconomy.employee.view:
+    description: View employee details
+    default: true
+  djeconomy.employee.notes:
+    description: Add notes to employee records
+    default: true
+  djeconomy.employee.history:
+    description: View employee history
+    default: true
+
+  # Job Applications
+  djeconomy.job.*:
+    description: All job application operations
+    default: true
+    children:
+      djeconomy.job.apply: true
+      djeconomy.job.accept: true
+      djeconomy.job.reject: true
+      djeconomy.job.view: true
+
+  djeconomy.job.apply:
+    description: Apply for job positions
+    default: true
+  djeconomy.job.accept:
+    description: Accept job offers
+    default: true
+  djeconomy.job.reject:
+    description: Reject job offers
+    default: true
+  djeconomy.job.view:
+    description: View available job offers
+    default: true
+
+  # ==================== MINECRAFT-VIABLE FEATURES ====================
+  # Physical Business Locations
+  djeconomy.location.*:
+    description: All business location operations
+    default: true
+    children:
+      djeconomy.location.create: true
+      djeconomy.location.delete: true
+      djeconomy.location.edit: true
+      djeconomy.location.list: true
+      djeconomy.location.teleport: true
+      djeconomy.location.worldguard: true
+
+  djeconomy.location.create:
+    description: Create business locations
+    default: true
+  djeconomy.location.delete:
+    description: Delete business locations
+    default: true
+  djeconomy.location.edit:
+    description: Edit business locations
+    default: true
+  djeconomy.location.list:
+    description: List business locations
+    default: true
+  djeconomy.location.teleport:
+    description: Teleport to business locations
+    default: true
+  djeconomy.location.worldguard:
+    description: Create WorldGuard regions for locations
+    default: false
+
+  # Resource Processing Chains
+  djeconomy.processing.*:
+    description: All resource processing operations
+    default: true
+    children:
+      djeconomy.processing.create: true
+      djeconomy.processing.delete: true
+      djeconomy.processing.edit: true
+      djeconomy.processing.list: true
+      djeconomy.processing.start: true
+      djeconomy.processing.stop: true
+
+  djeconomy.processing.create:
+    description: Create resource processing chains
+    default: true
+  djeconomy.processing.delete:
+    description: Delete resource processing chains
+    default: true
+  djeconomy.processing.edit:
+    description: Edit resource processing chains
+    default: true
+  djeconomy.processing.list:
+    description: List resource processing chains
+    default: true
+  djeconomy.processing.start:
+    description: Start resource processing
+    default: true
+  djeconomy.processing.stop:
+    description: Stop resource processing
+    default: true
+
+  # Construction Contracts
+  djeconomy.contract.*:
+    description: All construction contract operations
+    default: true
+    children:
+      djeconomy.contract.create: true
+      djeconomy.contract.delete: true
+      djeconomy.contract.edit: true
+      djeconomy.contract.list: true
+      djeconomy.contract.accept: true
+      djeconomy.contract.complete: true
+      djeconomy.contract.cancel: true
+
+  djeconomy.contract.create:
+    description: Create construction contracts
+    default: true
+  djeconomy.contract.delete:
+    description: Delete construction contracts
+    default: true
+  djeconomy.contract.edit:
+    description: Edit construction contracts
+    default: true
+  djeconomy.contract.list:
+    description: List construction contracts
+    default: true
+  djeconomy.contract.accept:
+    description: Accept construction contracts
+    default: true
+  djeconomy.contract.complete:
+    description: Mark contracts as complete
+    default: true
+  djeconomy.contract.cancel:
+    description: Cancel construction contracts
+    default: true
+
+  # GUI Interface
+  djeconomy.gui.*:
+    description: All GUI interface operations
+    default: true
+    children:
+      djeconomy.gui.access: true
+      djeconomy.gui.admin: true
+
+  djeconomy.gui.access:
+    description: Access business GUI interface
+    default: true
+  djeconomy.gui.admin:
+    description: Access admin GUI features
+    default: false
+
+  # Revenue and Analytics
+  djeconomy.revenue.*:
+    description: All revenue operations
+    default: true
+    children:
+      djeconomy.revenue.view: true
+      djeconomy.revenue.generate: true
+      djeconomy.revenue.history: true
+      djeconomy.revenue.model.set: true
+      djeconomy.revenue.model.list: true
+
+  djeconomy.revenue.view:
+    description: View business revenue
+    default: true
+  djeconomy.revenue.generate:
+    description: Generate business revenue
+    default: true
+  djeconomy.revenue.history:
+    description: View revenue history
+    default: true
+  djeconomy.revenue.model.set:
+    description: Set business revenue model
+    default: true
+  djeconomy.revenue.model.list:
+    description: List available revenue models
+    default: true
+
+  djeconomy.analytics.*:
+    description: All analytics operations
+    default: true
+    children:
+      djeconomy.analytics.performance: true
+      djeconomy.analytics.productivity: true
+      djeconomy.analytics.effectiveness: true
+      djeconomy.analytics.profitability: true
+      djeconomy.analytics.position: true
+
+  djeconomy.analytics.performance:
+    description: View performance reports
+    default: true
+  djeconomy.analytics.productivity:
+    description: View productivity reports
+    default: true
+  djeconomy.analytics.effectiveness:
+    description: View effectiveness reports
+    default: true
+  djeconomy.analytics.profitability:
+    description: View profitability reports
+    default: true
+  djeconomy.analytics.position:
+    description: View position analytics
+    default: true
+
+  # ==================== ADMINISTRATIVE PERMISSIONS ====================
+  djeconomy.admin:
+    description: Full administrative access
+    default: op
+    children:
+      djeconomy.admin.revenue.manual: true
+      djeconomy.admin.delete.any: true
+      djeconomy.admin.view.any: true
+      djeconomy.admin.edit.any: true
+      djeconomy.admin.hire.force: true
+      djeconomy.admin.fire.force: true
+      djeconomy.gui.admin: true
+      djeconomy.system.reload: true
+      djeconomy.system.debug: true
+      djeconomy.system.backup: true
+
+  djeconomy.admin.revenue.manual:
+    description: Manually generate revenue for any business
+    default: false
+  djeconomy.admin.delete.any:
+    description: Delete any business or component
+    default: false
+  djeconomy.admin.view.any:
+    description: View any business information
+    default: false
+  djeconomy.admin.edit.any:
+    description: Edit any business
+    default: false
+  djeconomy.admin.hire.force:
+    description: Force hire employees without consent
+    default: false
+  djeconomy.admin.fire.force:
+    description: Force fire employees from any business
+    default: false
+
+  djeconomy.system.*:
+    description: All system operations
+    default: false
+    children:
+      djeconomy.system.reload: true
+      djeconomy.system.debug: true
+      djeconomy.system.backup: true
+
+  djeconomy.system.reload:
+    description: Reload plugin configuration
+    default: false
+  djeconomy.system.debug:
+    description: Access debug information
+    default: false
+  djeconomy.system.backup:
+    description: Create system backups
+    default: false
+
+  # ==================== LIMIT PERMISSIONS ====================
+  djeconomy.limit.*:
+    description: All limit permissions
+    default: false
+    children:
+      djeconomy.limit.business.unlimited: true
+      djeconomy.limit.employee.unlimited: true
+      djeconomy.limit.position.unlimited: true
+      djeconomy.limit.location.unlimited: true
+      djeconomy.limit.contract.unlimited: true
+
+  djeconomy.limit.business.unlimited:
+    description: Create unlimited businesses
+    default: false
+  djeconomy.limit.employee.unlimited:
+    description: Hire unlimited employees
+    default: false
+  djeconomy.limit.position.unlimited:
+    description: Create unlimited positions
+    default: false
+  djeconomy.limit.location.unlimited:
+    description: Create unlimited locations
+    default: false
+  djeconomy.limit.contract.unlimited:
+    description: Create unlimited contracts
+    default: false
+
+  # Specific numeric limits
+  djeconomy.limit.business.5:
+    description: Create up to 5 businesses
+    default: false
+  djeconomy.limit.business.10:
+    description: Create up to 10 businesses
+    default: false
+  djeconomy.limit.employee.25:
+    description: Hire up to 25 employees per business
+    default: false
+  djeconomy.limit.employee.50:
+    description: Hire up to 50 employees per business
+    default: false
+  djeconomy.limit.position.10:
+    description: Create up to 10 positions per business
+    default: false
+  djeconomy.limit.position.20:
+    description: Create up to 20 positions per business
+    default: false
+
+  # Legacy permissions for backward compatibility
+  dynamicjobs.*:
+    description: Legacy - Gives access to all DynamicJobs commands
+    default: op
+    children:
+      djeconomy.*: true
+  dynamicjobs.jobs.*:
+    description: Legacy - Gives access to all job commands
+    default: true
+  dynamicjobs.business.*:
+    description: Legacy - Gives access to all business commands
+    default: true
+    children:
+      djeconomy.business.*: true
+  dynamicjobs.admin.*:
+    description: Legacy - Gives access to all admin commands
+    default: op
+    children:
+      djeconomy.admin: true
+
+commands:
+  jobs:
+    description: Main jobs command
+    usage: /jobs [join|leave|info|stats] [job]
+    aliases: [job, j]
+    permission: djeconomy.job.view
+    
+  business:
+    description: Comprehensive business management with Minecraft-viable features
+    usage: |
+      /business [subcommand] [args]
+      
+      Basic Operations:
+      • create <name> <type> - Create a new business
+      • list - List your businesses
+      • info <id> - View business information
+      • deposit <id> <amount> - Deposit money
+      • withdraw <id> <amount> - Withdraw money
+      
+      Employee Management:
+      • create-position <id> <title> <salary> <max> <description>
+      • list-positions <id> - List business positions
+      • hire-to-position <position_id> <player>
+      • fire-employee <employee_id>
+      • list-employees <id> - List business employees
+      
+      Minecraft-Viable Features:
+      • gui - Open business management interface
+      • menu - Open business management interface
+      
+      Analytics & Reports:
+      • performance-report <id> - Business performance
+      • productivity-report <id> - Employee productivity
+      • revenue-history <id> - Revenue tracking
+      • profitability-report <id> - Profit analysis
+      
+      Job System:
+      • job-offers - View available job offers
+      • accept-job <request_id> - Accept job offer
+      • reject-job <request_id> - Reject job offer
+      
+      Admin Commands (requires permissions):
+      • manual-revenue <id> - Generate manual revenue
+    aliases: [biz, company, corp]
+    permission: djeconomy.business.view
+    
+  gigs:
+    description: Gig economy and freelance work system
+    usage: /gigs [list|create|accept|complete] [args]
+    aliases: [gig, freelance, contract]
+    permission: djeconomy.contract.view
+    
+  djeconomy:
+    description: Administrative commands for Dynamic Jobs & Economy Pro
+    usage: |
+      /djeconomy [subcommand] [args]
+      
+      System Commands:
+      • reload - Reload plugin configuration
+      • debug - Toggle debug mode
+      • backup - Create system backup
+      
+      Business Administration:
+      • view-any <business_id> - View any business
+      • edit-any <business_id> - Edit any business
+      • force-hire <business_id> <player> - Force hire
+      • force-fire <employee_id> - Force fire
+    aliases: [dje, djadmin, djeco]
+    permission: djeconomy.admin
+    permission: dynamicjobs.admin.*

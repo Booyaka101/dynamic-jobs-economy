@@ -1,0 +1,86 @@
+# Dynamic Jobs & Economy Pro - Changelog
+
+## Version 1.0.1 - "Polish & Security Update" (January 2025)
+
+### 🛡️ **Security Enhancements**
+- **Gig Escrow System**: Gigs now require poster approval before payment is released
+- **Employee Consent**: Business hiring/firing now requires employee acceptance
+- **Admin Transaction Safety**: Large admin transactions (>$100k) require confirmation
+- **Atomic Business Operations**: All business transactions are now rollback-safe
+
+### 🤖 **New Automated Features**
+- **Auto-Payroll**: Businesses automatically pay employee salaries every hour
+- **Auto-Save**: Player data saves every 5 minutes and on logout
+- **Memory Cleanup**: Automatic cleanup of tracking data to prevent memory leaks
+
+### 👨‍💼 **Enhanced Admin Commands**
+- **Offline Player Support**: All admin economy commands now work with offline players
+- **New Confirmation System**: Use `/djeconomy confirm` for large transactions
+- **Enhanced Logging**: All admin actions are logged with timestamps
+
+### 🎮 **Improved User Experience**
+- **Complete Tab Completion**: All commands now have full tab completion
+- **Real Job Perks**: Job perks now provide actual potion effects
+- **Anti-Exploit Protection**: Added cooldowns to prevent farming abuse
+- **Better Error Messages**: Clearer feedback for all operations
+
+### 🔧 **New Command Features**
+
+**Business Commands:**
+- `/business accept-hire` - Accept a business job offer
+- `/business reject-hire` - Reject a business job offer
+- Enhanced `/business hire <player> <business_id>` - Now requires employee consent
+
+**Gig Commands:**
+- `/gigs approve <gig_id>` - Approve completed gig work (poster only)
+- `/gigs reject <gig_id>` - Reject completed gig work (poster only)
+- Enhanced `/gigs complete <gig_id>` - Now submits for approval instead of auto-paying
+
+**Admin Commands:**
+- `/djeconomy confirm` - Confirm large admin transactions
+- Enhanced `/djeconomy economy give/take/set <player> <amount>` - Now works with offline players
+- Enhanced `/djeconomy setlevel <player> <job> <level>` - Now works with offline players
+
+### 🐛 **Critical Bug Fixes**
+- Fixed compilation errors in command classes
+- Resolved null pointer exceptions in admin commands
+- Fixed missing employee tracking in businesses
+- Corrected offline player economy operations
+- Improved plugin reload functionality
+
+### ⚡ **Performance Improvements**
+- Optimized database queries
+- Fixed memory leaks in tracking systems
+- Enhanced async task management
+- Reduced server lag impact
+
+---
+
+## Version 1.0.0 - "Initial Release" (January 2025)
+
+### 🚀 **Initial Features**
+
+**Core Systems**
+- Complete job system with 5 job types (Miner, Chef, Farmer, Builder, Merchant)
+- Business management with employee hiring and payroll
+- Gig marketplace for freelance work
+- Advanced economy system with Vault integration
+- Multi-database support (SQLite, MySQL, MongoDB)
+
+**Command System**
+- `/jobs` - Complete job management
+- `/business` - Business creation and management
+- `/gigs` - Gig marketplace operations
+- `/djeconomy` - Admin tools and commands
+
+**Integration Support**
+- Vault economy integration
+- WorldGuard region support
+- McMMO skill integration
+- LuckPerms permission system
+- ShopGUIPlus framework
+
+---
+
+*Dynamic Jobs & Economy Pro is developed by **BooPug Studios** with ❤️*
+*For support, visit our Discord or create an issue on our GitHub repository.*

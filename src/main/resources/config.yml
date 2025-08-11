@@ -1,0 +1,216 @@
+# Dynamic Jobs & Economy Pro Configuration
+# Plugin by BooPug Studios - Advanced job and economy system
+
+# Database Configuration
+database:
+  type: "sqlite" # Options: sqlite, mysql, mongodb
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "dynamicjobs"
+    username: "root"
+    password: "password"
+    useSSL: false
+  mongodb:
+    connection_string: "mongodb://localhost:27017/dynamicjobs"
+
+# Jobs Settings
+jobs:
+  # Enable/disable the job system
+  enabled: true
+  
+  # Maximum jobs a player can have simultaneously
+  max_jobs_per_player: 3
+  
+  # Job configurations
+  miner:
+    enabled: true
+    display_name: "&6Miner"
+    description: "Extract valuable resources from the earth"
+    base_income: 50
+    xp_per_action: 10
+    max_level: 100
+    perks:
+      level_5: "double_ores"
+      level_10: "fortune_boost"
+      level_25: "night_vision"
+      level_50: "haste_permanent"
+    
+  chef:
+    enabled: true
+    display_name: "&cChef"
+    description: "Master the culinary arts"
+    base_income: 40
+    xp_per_cooking: 8
+    max_level: 100
+    perks:
+      level_5: "saturation_boost"
+      level_15: "speed_cooking"
+      level_30: "golden_food"
+  
+  farmer:
+    enabled: true
+    display_name: "&aFarmer"
+    description: "Cultivate crops and raise livestock"
+    base_income: 35
+    xp_per_harvest: 12
+    max_level: 100
+    perks:
+      level_5: "crop_growth_boost"
+      level_20: "animal_breeding_bonus"
+      level_40: "weather_immunity"
+  
+  builder:
+    enabled: true
+    display_name: "&eBuilder"
+    description: "Construct magnificent structures"
+    base_income: 45
+    xp_per_block: 5
+    max_level: 100
+    perks:
+      level_10: "block_efficiency"
+      level_25: "structure_templates"
+      level_50: "creative_flight"
+  
+  merchant:
+    enabled: true
+    display_name: "&bMerchant"
+    description: "Trade goods and manage commerce"
+    base_income: 60
+    xp_per_trade: 15
+    max_level: 100
+    perks:
+      level_5: "discount_trades"
+      level_15: "bulk_trading"
+      level_35: "market_insights"
+
+# Economy Settings
+economy:
+  # Enable dynamic pricing based on supply and demand
+  dynamic_pricing: true
+  
+  # Daily inflation rate (0.02 = 2%)
+  inflation_rate: 0.02
+  
+  # Starting money for new players
+  starting_money: 1000
+  
+  # Maximum money a player can hold
+  max_money: 10000000
+  
+  # Tax settings
+  taxes:
+    enabled: true
+    income_tax_rate: 0.10 # 10% income tax
+    business_tax_rate: 0.15 # 15% business tax
+    property_tax_rate: 0.05 # 5% property tax
+
+# Business Settings
+business:
+  # Enable the business system
+  enabled: true
+  
+  # Maximum employees per business
+  max_employees: 10
+  
+  # Business payroll settings
+  default_salary: 100.0
+  payroll_interval_hours: 1  # How often to run payroll (in hours)
+  payroll_enabled: true
+  max_employees_per_business: 10
+  
+  # Cost to create a business
+  creation_cost: 5000
+  
+  # Business types and their settings
+  types:
+    shop:
+      display_name: "&eShop"
+      max_employees: 5
+      daily_upkeep: 100
+    
+    restaurant:
+      display_name: "&cRestaurant"
+      max_employees: 8
+      daily_upkeep: 150
+    
+    factory:
+      display_name: "&8Factory"
+      max_employees: 15
+      daily_upkeep: 300
+    
+    farm:
+      display_name: "&aFarm"
+      max_employees: 12
+      daily_upkeep: 200
+
+# Government Settings
+government:
+  # Enable government system
+  enabled: true
+  
+  # Election settings
+  elections:
+    duration_days: 30
+    voting_cost: 0 # Free voting
+    campaign_cost: 1000
+  
+  # Mayor powers
+  mayor:
+    can_set_taxes: true
+    can_fund_projects: true
+    salary: 1000 # Daily salary
+    max_tax_rate: 0.25 # 25% maximum tax rate
+
+# Gig Economy Settings
+gigs:
+  # Enable gig system
+  enabled: true
+  
+  # Maximum active gigs per player
+  max_gigs_per_player: 5
+  
+  # Gig posting settings
+  posting_cost: 50.0
+  commission_rate: 0.05  # 5% commission
+  cancellation_penalty: 0.1  # 10% penalty for cancelling
+  timeout_days: 7  # Auto-resolve gigs after 7 days
+  max_active_gigs_per_player: 5  # Maximum active gigs per player in-progress gigs
+  auto_approve_hours: 168      # Auto-approve after 7 days if no response
+  escrow_enabled: true         # Use escrow system for secure payments
+
+# Integration Settings
+integrations:
+  vault:
+    enabled: true
+    use_vault_economy: true
+  
+  worldguard:
+    enabled: true
+    block_xp_in_protected_regions: true
+    allowed_regions: []
+  
+  mcmmo:
+    enabled: true
+    stack_perks: true
+  
+  luckperms:
+    enabled: true
+    auto_assign_job_permissions: true
+
+# Messages
+messages:
+  prefix: "&8[&6DynamicJobs&8] "
+  job_joined: "&aYou have joined the %job% job!"
+  job_left: "&cYou have left the %job% job!"
+  job_levelup: "&6Congratulations! You reached level %level% in %job%!"
+  insufficient_funds: "&cYou don't have enough money!"
+  business_created: "&aYour business '%name%' has been created!"
+  gig_posted: "&aYour gig has been posted successfully!"
+  gig_completed: "&aGig completed! You earned $%amount%!"
+
+# Debug settings
+debug:
+  enabled: false
+  log_database_queries: false
+  log_xp_gains: false
