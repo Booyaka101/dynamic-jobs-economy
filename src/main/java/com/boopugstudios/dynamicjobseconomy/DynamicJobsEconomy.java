@@ -151,9 +151,6 @@ public final class DynamicJobsEconomy extends JavaPlugin {
                 return false;
             }
             
-            // Initialize connection pool for better performance
-            databaseManager.initializeConnectionPool();
-            
             // Initialize v1.0.2 new managers
             notificationManager = new NotificationManager(this);
             adminAuditLogger = new AdminAuditLogger(this);
