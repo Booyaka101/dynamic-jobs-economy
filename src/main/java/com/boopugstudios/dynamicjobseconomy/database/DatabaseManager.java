@@ -4,6 +4,9 @@ import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.sql.*;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -47,6 +50,11 @@ public class DatabaseManager {
     }
     
     private boolean initializeSQLite() throws SQLException {
+        // Ensure plugin data directory exists
+        if (!plugin.getDataFolder().exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            plugin.getDataFolder().mkdirs();
+        }
         String url = "jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/database.db";
         connection = DriverManager.getConnection(url);
         // Ensure foreign keys are enforced on SQLite
@@ -55,23 +63,15 @@ public class DatabaseManager {
         }
         
         createTables();
+        initializeConnectionPool();
         plugin.getLogger().info("SQLite database initialized successfully!");
         return true;
     }
     
     private boolean initializeMySQL() throws SQLException {
-        FileConfiguration config = plugin.getConfig();
-        String host = config.getString("database.mysql.host");
-        int port = config.getInt("database.mysql.port");
-        String database = config.getString("database.mysql.database");
-        String username = config.getString("database.mysql.username");
-        String password = config.getString("database.mysql.password");
-        boolean useSSL = config.getBoolean("database.mysql.useSSL");
-        
-        String url = String.format("jdbc:mysql://%s:%d/%s?useSSL=%s", host, port, database, useSSL);
-        connection = DriverManager.getConnection(url, username, password);
-        
+        connection = createMySQLConnection();
         createTables();
+        initializeConnectionPool();
         plugin.getLogger().info("MySQL database initialized successfully!");
         return true;
     }
@@ -136,6 +136,7 @@ public class DatabaseManager {
                 name TEXT NOT NULL,
                 owner_uuid TEXT NOT NULL,
                 type TEXT NOT NULL,
+                revenue_model TEXT DEFAULT 'STARTUP',
                 balance REAL DEFAULT 0.00,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (owner_uuid) REFERENCES players(uuid) ON DELETE CASCADE
@@ -146,6 +147,7 @@ public class DatabaseManager {
                 name VARCHAR(100) NOT NULL,
                 owner_uuid VARCHAR(36) NOT NULL,
                 type VARCHAR(50) NOT NULL,
+                revenue_model VARCHAR(50) DEFAULT 'STARTUP',
                 balance DECIMAL(15,2) DEFAULT 0.00,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (owner_uuid) REFERENCES players(uuid) ON DELETE CASCADE
@@ -153,27 +155,171 @@ public class DatabaseManager {
         """;
         
         // Business employees table
+        // Business positions table
+        String positionsTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS business_positions (
+                position_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                salary REAL DEFAULT 0.00,
+                description TEXT,
+                max_employees INTEGER DEFAULT 1,
+                is_active INTEGER DEFAULT 1,
+                created_by TEXT,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+            )
+        """ : """
+            CREATE TABLE IF NOT EXISTS business_positions (
+                position_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                business_id INTEGER NOT NULL,
+                title VARCHAR(100) NOT NULL,
+                salary DECIMAL(10,2) DEFAULT 0.00,
+                description TEXT,
+                max_employees INTEGER DEFAULT 1,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_by VARCHAR(36),
+                created_at BIGINT NOT NULL,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+            )
+        """;
+
+        // Business employees table (aligned with code usage)
         String employeesTable = isSQLite ? """
             CREATE TABLE IF NOT EXISTS business_employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 business_id INTEGER NOT NULL,
-                employee_uuid TEXT NOT NULL,
-                position TEXT DEFAULT 'Employee',
-                salary REAL DEFAULT 0.00,
-                hired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                position_id INTEGER NOT NULL,
+                player_uuid TEXT NOT NULL,
+                player_name TEXT,
+                current_salary REAL DEFAULT 0.00,
+                hired_at INTEGER NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                notes TEXT,
                 FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
-                FOREIGN KEY (employee_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+                FOREIGN KEY (position_id) REFERENCES business_positions(position_id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
             )
         """ : """
             CREATE TABLE IF NOT EXISTS business_employees (
+                employee_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                business_id INTEGER NOT NULL,
+                position_id INTEGER NOT NULL,
+                player_uuid VARCHAR(36) NOT NULL,
+                player_name VARCHAR(50),
+                current_salary DECIMAL(10,2) DEFAULT 0.00,
+                hired_at BIGINT NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                notes TEXT,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (position_id) REFERENCES business_positions(position_id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """;
+
+        // Employee notes table
+        String employeeNotesTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS employee_notes (
+                note_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                player_uuid TEXT NOT NULL,
+                note TEXT NOT NULL,
+                author TEXT,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """ : """
+            CREATE TABLE IF NOT EXISTS employee_notes (
+                note_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                business_id INTEGER NOT NULL,
+                player_uuid VARCHAR(36) NOT NULL,
+                note TEXT NOT NULL,
+                author VARCHAR(50),
+                created_at BIGINT NOT NULL,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """;
+
+        // Hiring requests table
+        String hiringRequestsTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS hiring_requests (
+                request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                position_id INTEGER NOT NULL,
+                player_uuid TEXT NOT NULL,
+                requested_by TEXT NOT NULL,
+                offered_salary REAL NOT NULL,
+                message TEXT,
+                request_time INTEGER NOT NULL,
+                expiration_time INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                rejection_reason TEXT,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (position_id) REFERENCES business_positions(position_id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """ : """
+            CREATE TABLE IF NOT EXISTS hiring_requests (
+                request_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                business_id INTEGER NOT NULL,
+                position_id INTEGER NOT NULL,
+                player_uuid VARCHAR(36) NOT NULL,
+                requested_by VARCHAR(36) NOT NULL,
+                offered_salary DECIMAL(10,2) NOT NULL,
+                message TEXT,
+                request_time BIGINT NOT NULL,
+                expiration_time BIGINT NOT NULL,
+                status VARCHAR(20) NOT NULL,
+                rejection_reason TEXT,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (position_id) REFERENCES business_positions(position_id) ON DELETE CASCADE,
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """;
+
+        // Business transactions table (used by BusinessAnalytics)
+        String businessTransactionsTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS business_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                transaction_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                description TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+            )
+        """ : """
+            CREATE TABLE IF NOT EXISTS business_transactions (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                business_id INTEGER NOT NULL,
+                transaction_type VARCHAR(20) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+            )
+        """;
+
+        // Employee performance table (for productivity metrics)
+        String employeePerformanceTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS employee_performance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                employee_uuid TEXT NOT NULL,
+                performance_rating REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+            )
+        """ : """
+            CREATE TABLE IF NOT EXISTS employee_performance (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 business_id INTEGER NOT NULL,
                 employee_uuid VARCHAR(36) NOT NULL,
-                position VARCHAR(50) DEFAULT 'Employee',
-                salary DECIMAL(10,2) DEFAULT 0.00,
-                hired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
-                FOREIGN KEY (employee_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+                performance_rating DECIMAL(5,2) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
             )
         """;
         
@@ -234,9 +380,145 @@ public class DatabaseManager {
             stmt.execute(playersTable);
             stmt.execute(jobLevelsTable);
             stmt.execute(businessesTable);
+            // Attempt to add revenue_model column for existing installations (ignore if already exists)
+            try {
+                String alterBusinessesRevenueModel = isSQLite
+                    ? "ALTER TABLE businesses ADD COLUMN revenue_model TEXT DEFAULT 'STARTUP'"
+                    : "ALTER TABLE businesses ADD COLUMN revenue_model VARCHAR(50) DEFAULT 'STARTUP'";
+                stmt.execute(alterBusinessesRevenueModel);
+            } catch (SQLException ignore) {
+                // Column may already exist; safe to ignore
+            }
+            stmt.execute(positionsTable);
             stmt.execute(employeesTable);
             stmt.execute(marketTable);
             stmt.execute(gigsTable);
+            stmt.execute(employeeNotesTable);
+            stmt.execute(hiringRequestsTable);
+            stmt.execute(businessTransactionsTable);
+            stmt.execute(employeePerformanceTable);
+
+            // Safe migrations for existing databases
+            try {
+                String alterEmployeesHiredAt = isSQLite
+                    ? "ALTER TABLE business_employees ADD COLUMN hired_at INTEGER NOT NULL DEFAULT 0"
+                    : "ALTER TABLE business_employees ADD COLUMN hired_at BIGINT NOT NULL DEFAULT 0";
+                stmt.execute(alterEmployeesHiredAt);
+            } catch (SQLException ignore) { }
+
+            try {
+                String alterHiringRequestTime = isSQLite
+                    ? "ALTER TABLE hiring_requests ADD COLUMN request_time INTEGER NOT NULL DEFAULT 0"
+                    : "ALTER TABLE hiring_requests ADD COLUMN request_time BIGINT NOT NULL DEFAULT 0";
+                stmt.execute(alterHiringRequestTime);
+            } catch (SQLException ignore) { }
+
+            try {
+                String alterHiringExpirationTime = isSQLite
+                    ? "ALTER TABLE hiring_requests ADD COLUMN expiration_time INTEGER NOT NULL DEFAULT 0"
+                    : "ALTER TABLE hiring_requests ADD COLUMN expiration_time BIGINT NOT NULL DEFAULT 0";
+                stmt.execute(alterHiringExpirationTime);
+            } catch (SQLException ignore) { }
+
+            // Helpful indexes (ignore errors if they already exist)
+            try {
+                String idxEmployeesPlayer = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_emp_player ON business_employees(player_uuid)"
+                    : "CREATE INDEX idx_emp_player ON business_employees(player_uuid)";
+                stmt.execute(idxEmployeesPlayer);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxEmployeesBusiness = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_emp_business ON business_employees(business_id)"
+                    : "CREATE INDEX idx_emp_business ON business_employees(business_id)";
+                stmt.execute(idxEmployeesBusiness);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxEmployeesPosition = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_emp_position ON business_employees(position_id)"
+                    : "CREATE INDEX idx_emp_position ON business_employees(position_id)";
+                stmt.execute(idxEmployeesPosition);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxHiringPlayer = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_hiring_player ON hiring_requests(player_uuid)"
+                    : "CREATE INDEX idx_hiring_player ON hiring_requests(player_uuid)";
+                stmt.execute(idxHiringPlayer);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxNotesPlayer = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_notes_player ON employee_notes(player_uuid)"
+                    : "CREATE INDEX idx_notes_player ON employee_notes(player_uuid)";
+                stmt.execute(idxNotesPlayer);
+            } catch (SQLException ignore) { }
+
+            // Additional helpful indexes
+            try {
+                String idxPositionsBusiness = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_positions_business ON business_positions(business_id)"
+                    : "CREATE INDEX idx_positions_business ON business_positions(business_id)";
+                stmt.execute(idxPositionsBusiness);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxPositionsBusinessActive = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_positions_business_active ON business_positions(business_id, is_active)"
+                    : "CREATE INDEX idx_positions_business_active ON business_positions(business_id, is_active)";
+                stmt.execute(idxPositionsBusinessActive);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxHiringBusiness = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_hiring_business ON hiring_requests(business_id)"
+                    : "CREATE INDEX idx_hiring_business ON hiring_requests(business_id)";
+                stmt.execute(idxHiringBusiness);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxHiringPosition = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_hiring_position ON hiring_requests(position_id)"
+                    : "CREATE INDEX idx_hiring_position ON hiring_requests(position_id)";
+                stmt.execute(idxHiringPosition);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxHiringStatus = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_hiring_status ON hiring_requests(status)"
+                    : "CREATE INDEX idx_hiring_status ON hiring_requests(status)";
+                stmt.execute(idxHiringStatus);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxTransBusinessCreated = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_trans_business_created ON business_transactions(business_id, created_at)"
+                    : "CREATE INDEX idx_trans_business_created ON business_transactions(business_id, created_at)";
+                stmt.execute(idxTransBusinessCreated);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxNotesBusiness = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_notes_business ON employee_notes(business_id)"
+                    : "CREATE INDEX idx_notes_business ON employee_notes(business_id)";
+                stmt.execute(idxNotesBusiness);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxGigsStatus = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_gigs_status ON gigs(status)"
+                    : "CREATE INDEX idx_gigs_status ON gigs(status)";
+                stmt.execute(idxGigsStatus);
+            } catch (SQLException ignore) { }
+
+            try {
+                String idxMarketItem = isSQLite
+                    ? "CREATE INDEX IF NOT EXISTS idx_market_item ON market_prices(item_name)"
+                    : "CREATE INDEX idx_market_item ON market_prices(item_name)";
+                stmt.execute(idxMarketItem);
+            } catch (SQLException ignore) { }
         }
         
         plugin.getLogger().info("Database tables created successfully!");
@@ -249,7 +531,7 @@ public class DatabaseManager {
         if (conn != null) {
             try {
                 if (!conn.isClosed() && conn.isValid(5)) {
-                    return conn;
+                    return wrapConnection(conn);
                 } else {
                     // Connection is invalid, close it and create new one
                     try {
@@ -267,19 +549,49 @@ public class DatabaseManager {
             conn = createNewConnection();
             if (conn != null) {
                 activeConnections.incrementAndGet();
-                return conn;
+                return wrapConnection(conn);
             }
         }
         
         // Fallback to original connection if pool is exhausted
         try {
             if (connection == null || connection.isClosed()) {
-                initialize();
+                connection = createNewConnection();
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error checking database connection", e);
         }
-        return connection;
+        return wrapConnection(connection);
+    }
+
+    /**
+     * Wrap a JDBC Connection so that close() returns it to our pool instead of actually closing it.
+     */
+    private Connection wrapConnection(final Connection underlying) {
+        if (underlying == null) return null;
+        final boolean[] closed = {false};
+        InvocationHandler handler = new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                String name = method.getName();
+                if ("close".equals(name)) {
+                    if (!closed[0]) {
+                        closed[0] = true;
+                        returnConnection(underlying);
+                    }
+                    return null;
+                }
+                if ("isClosed".equals(name)) {
+                    return closed[0] || underlying.isClosed();
+                }
+                return method.invoke(underlying, args);
+            }
+        };
+        return (Connection) Proxy.newProxyInstance(
+            Connection.class.getClassLoader(),
+            new Class[]{Connection.class},
+            handler
+        );
     }
     
     /**
@@ -332,10 +644,14 @@ public class DatabaseManager {
     }
     
     private Connection createSQLiteConnection() throws SQLException {
-        String url = "jdbc:sqlite:" + plugin.getDataFolder() + "/database.db";
+        String url = "jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/database.db";
         Connection conn = DriverManager.getConnection(url);
         try (Statement s = conn.createStatement()) {
             s.execute("PRAGMA foreign_keys = ON");
+            // Improve concurrency and durability for SQLite
+            s.execute("PRAGMA journal_mode = WAL");
+            s.execute("PRAGMA synchronous = NORMAL");
+            s.execute("PRAGMA busy_timeout = 5000");
         }
         return conn;
     }
@@ -347,8 +663,12 @@ public class DatabaseManager {
         String database = config.getString("database.mysql.database", "dynamicjobs");
         String username = config.getString("database.mysql.username", "root");
         String password = config.getString("database.mysql.password", "");
-        
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&serverTimezone=UTC";
+        boolean useSSL = config.getBoolean("database.mysql.useSSL", false);
+
+        String url = String.format(
+            "jdbc:mysql://%s:%d/%s?useSSL=%s&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8mb4&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&connectTimeout=10000&socketTimeout=60000&tcpKeepAlive=true",
+            host, port, database, Boolean.toString(useSSL)
+        );
         return DriverManager.getConnection(url, username, password);
     }
     

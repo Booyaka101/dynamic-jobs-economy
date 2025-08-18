@@ -191,9 +191,10 @@ public class ConsolidatedBusinessManager {
     public List<BusinessPosition> getBusinessPositions(int businessId) {
         List<BusinessPosition> positions = new ArrayList<>();
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT * FROM business_positions WHERE business_id = ? AND is_active = TRUE";
+            String sql = "SELECT * FROM business_positions WHERE business_id = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);
+                stmt.setBoolean(2, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         positions.add(new BusinessPosition(
@@ -252,11 +253,12 @@ public class ConsolidatedBusinessManager {
                 SELECT be.*, bp.title as position_title 
                 FROM business_employees be 
                 JOIN business_positions bp ON be.position_id = bp.position_id 
-                WHERE be.business_id = ? AND be.is_active = TRUE 
+                WHERE be.business_id = ? AND be.is_active = ? 
                 ORDER BY be.hired_at DESC
             """;
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);
+                stmt.setBoolean(2, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         employees.add(new BusinessEmployee(
@@ -288,13 +290,14 @@ public class ConsolidatedBusinessManager {
         if (isPlayerEmployedByBusiness(businessId, playerUUID)) return false;
         
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "INSERT INTO business_employees (business_id, position_id, player_uuid, player_name, current_salary) VALUES (?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO business_employees (business_id, position_id, player_uuid, player_name, current_salary, hired_at) VALUES (?, ?, ?, ?, ?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);
                 stmt.setInt(2, positionId);
                 stmt.setString(3, playerUUID.toString());
                 stmt.setString(4, plugin.getServer().getOfflinePlayer(playerUUID).getName());
                 stmt.setDouble(5, customSalary);
+                stmt.setLong(6, System.currentTimeMillis());
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -305,10 +308,11 @@ public class ConsolidatedBusinessManager {
     
     public boolean fireEmployee(int businessId, UUID playerUUID) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "UPDATE business_employees SET is_active = FALSE WHERE business_id = ? AND player_uuid = ?";
+            String sql = "UPDATE business_employees SET is_active = ? WHERE business_id = ? AND player_uuid = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, businessId);
-                stmt.setString(2, playerUUID.toString());
+                stmt.setBoolean(1, false);
+                stmt.setInt(2, businessId);
+                stmt.setString(3, playerUUID.toString());
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -494,10 +498,11 @@ public class ConsolidatedBusinessManager {
     
     public BusinessEmployee getBusinessEmployee(int businessId, UUID playerUUID) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT * FROM business_employees WHERE business_id = ? AND player_uuid = ? AND is_active = TRUE";
+            String sql = "SELECT * FROM business_employees WHERE business_id = ? AND player_uuid = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);
                 stmt.setString(2, playerUUID.toString());
+                stmt.setBoolean(3, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         return new BusinessEmployee(
@@ -526,12 +531,13 @@ public class ConsolidatedBusinessManager {
             BusinessPosition newPosition = getPosition(newPositionId);
             if (newPosition == null) return false;
             
-            String sql = "UPDATE business_employees SET position_id = ?, current_salary = ? WHERE business_id = ? AND player_uuid = ? AND is_active = TRUE";
+            String sql = "UPDATE business_employees SET position_id = ?, current_salary = ? WHERE business_id = ? AND player_uuid = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, newPositionId);
                 stmt.setDouble(2, newPosition.getSalary());
                 stmt.setInt(3, businessId);
                 stmt.setString(4, playerUUID.toString());
+                stmt.setBoolean(5, true);
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -628,9 +634,10 @@ public class ConsolidatedBusinessManager {
     
     public boolean deactivatePosition(int positionId) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "UPDATE business_positions SET is_active = FALSE WHERE position_id = ?";
+            String sql = "UPDATE business_positions SET is_active = ? WHERE position_id = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, positionId);
+                stmt.setBoolean(1, false);
+                stmt.setInt(2, positionId);
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -641,9 +648,10 @@ public class ConsolidatedBusinessManager {
     
     public boolean reactivatePosition(int positionId) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "UPDATE business_positions SET is_active = TRUE WHERE position_id = ?";
+            String sql = "UPDATE business_positions SET is_active = ? WHERE position_id = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, positionId);
+                stmt.setBoolean(1, true);
+                stmt.setInt(2, positionId);
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -716,10 +724,11 @@ public class ConsolidatedBusinessManager {
     
     private int getAveragePositionTenure(int positionId) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT AVG((? - hired_at) / (24 * 60 * 60 * 1000)) as avg_tenure FROM business_employees WHERE position_id = ? AND is_active = TRUE";
+            String sql = "SELECT AVG((? - hired_at) / (24 * 60 * 60 * 1000)) as avg_tenure FROM business_employees WHERE position_id = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setLong(1, System.currentTimeMillis());
                 stmt.setInt(2, positionId);
+                stmt.setBoolean(3, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     return rs.next() ? rs.getInt("avg_tenure") : 0;
                 }
@@ -733,10 +742,11 @@ public class ConsolidatedBusinessManager {
     // Make helper methods public for external access
     public boolean isPlayerEmployedByBusiness(int businessId, UUID playerUUID) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT COUNT(*) FROM business_employees WHERE business_id = ? AND player_uuid = ? AND is_active = TRUE";
+            String sql = "SELECT COUNT(*) FROM business_employees WHERE business_id = ? AND player_uuid = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);
                 stmt.setString(2, playerUUID.toString());
+                stmt.setBoolean(3, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     return rs.next() && rs.getInt(1) > 0;
                 }
@@ -749,9 +759,10 @@ public class ConsolidatedBusinessManager {
     
     public int getPositionEmployeeCount(int positionId) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT COUNT(*) FROM business_employees WHERE position_id = ? AND is_active = TRUE";
+            String sql = "SELECT COUNT(*) FROM business_employees WHERE position_id = ? AND is_active = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, positionId);
+                stmt.setBoolean(2, true);
                 try (ResultSet rs = stmt.executeQuery()) {
                     return rs.next() ? rs.getInt(1) : 0;
                 }
@@ -834,7 +845,7 @@ public class ConsolidatedBusinessManager {
                             UUID.fromString(rs.getString("requested_by")),
                             rs.getDouble("offered_salary"),
                             rs.getString("message"),
-                            rs.getLong("created_at"),
+                            rs.getLong("request_time"),
                             rs.getLong("expiration_time"),
                             HiringRequest.HiringRequestStatus.valueOf(rs.getString("status"))
                         );
