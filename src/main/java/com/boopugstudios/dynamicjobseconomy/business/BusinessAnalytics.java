@@ -58,14 +58,16 @@ public class BusinessAnalytics {
             stats.monthlySalaryExpense = stats.employeeCount * defaultSalary * payrollsPerMonth;
             
             // Get transaction history (last 30 days)
-            String transactionSql = """
-                SELECT 
-                    SUM(CASE WHEN transaction_type = 'DEPOSIT' THEN amount ELSE 0 END) as total_deposits,
-                    SUM(CASE WHEN transaction_type = 'WITHDRAW' THEN amount ELSE 0 END) as total_withdrawals,
-                    COUNT(*) as transaction_count
-                FROM business_transactions 
-                WHERE business_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            """;
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String transactionSql = isSQLite
+                ? "SELECT SUM(CASE WHEN transaction_type = 'DEPOSIT' THEN amount ELSE 0 END) as total_deposits, " +
+                  "SUM(CASE WHEN transaction_type = 'WITHDRAW' THEN amount ELSE 0 END) as total_withdrawals, " +
+                  "COUNT(*) as transaction_count FROM business_transactions WHERE business_id = ? " +
+                  "AND created_at >= datetime('now','-30 days')"
+                : "SELECT SUM(CASE WHEN transaction_type = 'DEPOSIT' THEN amount ELSE 0 END) as total_deposits, " +
+                  "SUM(CASE WHEN transaction_type = 'WITHDRAW' THEN amount ELSE 0 END) as total_withdrawals, " +
+                  "COUNT(*) as transaction_count FROM business_transactions WHERE business_id = ? " +
+                  "AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
             
             try (PreparedStatement stmt = conn.prepareStatement(transactionSql)) {
                 stmt.setInt(1, businessId);
@@ -100,14 +102,14 @@ public class BusinessAnalytics {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
             // This would require tracking employee contributions
             // For now, we'll return empty map as it would need additional tracking
-            String sql = """
-                SELECT employee_uuid, 
-                       COUNT(*) as tasks_completed,
-                       AVG(performance_rating) as avg_rating
-                FROM employee_performance 
-                WHERE business_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                GROUP BY employee_uuid
-            """;
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "SELECT employee_uuid, COUNT(*) as tasks_completed, AVG(performance_rating) as avg_rating " +
+                  "FROM employee_performance WHERE business_id = ? AND created_at >= datetime('now','-30 days') " +
+                  "GROUP BY employee_uuid"
+                : "SELECT employee_uuid, COUNT(*) as tasks_completed, AVG(performance_rating) as avg_rating " +
+                  "FROM employee_performance WHERE business_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) " +
+                  "GROUP BY employee_uuid";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, businessId);

@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.logging.Level;
 
 public class AdminAuditLogger {
@@ -23,25 +24,51 @@ public class AdminAuditLogger {
      */
     private void createAuditTable() {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = """
-                CREATE TABLE IF NOT EXISTS admin_audit_log (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    admin_uuid VARCHAR(36),
-                    admin_name VARCHAR(50) NOT NULL,
-                    action_type VARCHAR(50) NOT NULL,
-                    target_player VARCHAR(50),
-                    amount DECIMAL(15,2),
-                    details TEXT,
-                    server_name VARCHAR(100),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_admin_uuid (admin_uuid),
-                    INDEX idx_action_type (action_type),
-                    INDEX idx_created_at (created_at)
-                )
-            """;
-            
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.executeUpdate();
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            if (isSQLite) {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS admin_audit_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        admin_uuid TEXT,
+                        admin_name TEXT NOT NULL,
+                        action_type TEXT NOT NULL,
+                        target_player TEXT,
+                        amount REAL,
+                        details TEXT,
+                        server_name TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """;
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.executeUpdate();
+                }
+                // Create indexes separately in SQLite
+                try (Statement st = conn.createStatement()) {
+                    st.execute("CREATE INDEX IF NOT EXISTS idx_admin_uuid ON admin_audit_log(admin_uuid)");
+                    st.execute("CREATE INDEX IF NOT EXISTS idx_action_type ON admin_audit_log(action_type)");
+                    st.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON admin_audit_log(created_at)");
+                }
+            } else {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS admin_audit_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        admin_uuid VARCHAR(36),
+                        admin_name VARCHAR(50) NOT NULL,
+                        action_type VARCHAR(50) NOT NULL,
+                        target_player VARCHAR(50),
+                        amount DECIMAL(15,2),
+                        details TEXT,
+                        server_name VARCHAR(100),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_admin_uuid (admin_uuid),
+                        INDEX idx_action_type (action_type),
+                        INDEX idx_created_at (created_at)
+                    )
+                """;
+                
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.executeUpdate();
+                }
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error creating admin audit table", e);
@@ -102,7 +129,10 @@ public class AdminAuditLogger {
      */
     public void cleanupOldAuditLogs() {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "DELETE FROM admin_audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "DELETE FROM admin_audit_log WHERE created_at < datetime('now','-90 days')"
+                : "DELETE FROM admin_audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 int deleted = stmt.executeUpdate();
                 if (deleted > 0) {

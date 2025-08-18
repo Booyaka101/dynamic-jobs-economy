@@ -520,4 +520,3 @@ commands:
       • force-fire <employee_id> - Force fire
     aliases: [dje, djadmin, djeco]
     permission: djeconomy.admin
-    permission: dynamicjobs.admin.*

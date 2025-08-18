@@ -97,7 +97,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DynamicJobs§8] ");
         
-        if (!sender.hasPermission("dynamicjobs.admin.*")) {
+        // Accept either the new permission or the legacy wildcard for backward compatibility
+        if (!(sender.hasPermission("djeconomy.admin") || sender.hasPermission("dynamicjobs.admin.*"))) {
             sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
             return true;
         }

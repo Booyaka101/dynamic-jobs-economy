@@ -49,6 +49,10 @@ public class DatabaseManager {
     private boolean initializeSQLite() throws SQLException {
         String url = "jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/database.db";
         connection = DriverManager.getConnection(url);
+        // Ensure foreign keys are enforced on SQLite
+        try (Statement s = connection.createStatement()) {
+            s.execute("PRAGMA foreign_keys = ON");
+        }
         
         createTables();
         plugin.getLogger().info("SQLite database initialized successfully!");
@@ -79,8 +83,18 @@ public class DatabaseManager {
     }
     
     private void createTables() throws SQLException {
+        boolean isSQLite = "sqlite".equalsIgnoreCase(databaseType);
+
         // Players table
-        String playersTable = """
+        String playersTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS players (
+                uuid TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                money REAL DEFAULT 1000.00,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS players (
                 uuid VARCHAR(36) PRIMARY KEY,
                 username VARCHAR(16) NOT NULL,
@@ -91,7 +105,18 @@ public class DatabaseManager {
         """;
         
         // Job levels table
-        String jobLevelsTable = """
+        String jobLevelsTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS job_levels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_uuid TEXT NOT NULL,
+                job_name TEXT NOT NULL,
+                level INTEGER DEFAULT 1,
+                experience INTEGER DEFAULT 0,
+                joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (player_uuid, job_name),
+                FOREIGN KEY (player_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS job_levels (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 player_uuid VARCHAR(36) NOT NULL,
@@ -105,7 +130,17 @@ public class DatabaseManager {
         """;
         
         // Businesses table
-        String businessesTable = """
+        String businessesTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS businesses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                owner_uuid TEXT NOT NULL,
+                type TEXT NOT NULL,
+                balance REAL DEFAULT 0.00,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (owner_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS businesses (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(100) NOT NULL,
@@ -118,7 +153,18 @@ public class DatabaseManager {
         """;
         
         // Business employees table
-        String employeesTable = """
+        String employeesTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS business_employees (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL,
+                employee_uuid TEXT NOT NULL,
+                position TEXT DEFAULT 'Employee',
+                salary REAL DEFAULT 0.00,
+                hired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_uuid) REFERENCES players(uuid) ON DELETE CASCADE
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS business_employees (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 business_id INTEGER NOT NULL,
@@ -132,7 +178,16 @@ public class DatabaseManager {
         """;
         
         // Market prices table
-        String marketTable = """
+        String marketTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS market_prices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT NOT NULL,
+                price REAL NOT NULL,
+                supply INTEGER DEFAULT 0,
+                demand INTEGER DEFAULT 0,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS market_prices (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 item_name VARCHAR(100) NOT NULL,
@@ -144,7 +199,21 @@ public class DatabaseManager {
         """;
         
         // Gigs table
-        String gigsTable = """
+        String gigsTable = isSQLite ? """
+            CREATE TABLE IF NOT EXISTS gigs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                poster_uuid TEXT NOT NULL,
+                worker_uuid TEXT,
+                payment REAL NOT NULL,
+                status TEXT DEFAULT 'OPEN',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                completed_at DATETIME NULL,
+                FOREIGN KEY (poster_uuid) REFERENCES players(uuid) ON DELETE CASCADE,
+                FOREIGN KEY (worker_uuid) REFERENCES players(uuid) ON DELETE SET NULL
+            )
+        """ : """
             CREATE TABLE IF NOT EXISTS gigs (
                 id INTEGER PRIMARY KEY AUTO_INCREMENT,
                 title VARCHAR(200) NOT NULL,
@@ -264,7 +333,11 @@ public class DatabaseManager {
     
     private Connection createSQLiteConnection() throws SQLException {
         String url = "jdbc:sqlite:" + plugin.getDataFolder() + "/database.db";
-        return DriverManager.getConnection(url);
+        Connection conn = DriverManager.getConnection(url);
+        try (Statement s = conn.createStatement()) {
+            s.execute("PRAGMA foreign_keys = ON");
+        }
+        return conn;
     }
     
     private Connection createMySQLConnection() throws SQLException {

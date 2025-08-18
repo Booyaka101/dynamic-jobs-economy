@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,21 +30,42 @@ public class NotificationManager implements Listener {
      */
     private void createNotificationTable() {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = """
-                CREATE TABLE IF NOT EXISTS player_notifications (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    player_uuid VARCHAR(36) NOT NULL,
-                    message TEXT NOT NULL,
-                    notification_type VARCHAR(50) NOT NULL,
-                    is_read BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_player_uuid (player_uuid),
-                    INDEX idx_is_read (is_read)
-                )
-            """;
-            
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.executeUpdate();
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            if (isSQLite) {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS player_notifications (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        player_uuid TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        notification_type TEXT NOT NULL,
+                        is_read INTEGER DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """;
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.executeUpdate();
+                }
+                // Create indexes separately in SQLite
+                try (Statement st = conn.createStatement()) {
+                    st.execute("CREATE INDEX IF NOT EXISTS idx_player_uuid ON player_notifications(player_uuid)");
+                    st.execute("CREATE INDEX IF NOT EXISTS idx_is_read ON player_notifications(is_read)");
+                }
+            } else {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS player_notifications (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        player_uuid VARCHAR(36) NOT NULL,
+                        message TEXT NOT NULL,
+                        notification_type VARCHAR(50) NOT NULL,
+                        is_read BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_player_uuid (player_uuid),
+                        INDEX idx_is_read (is_read)
+                    )
+                """;
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.executeUpdate();
+                }
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error creating notification table", e);
@@ -97,7 +119,10 @@ public class NotificationManager implements Listener {
         List<String> notifications = new ArrayList<>();
         
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "SELECT message, notification_type FROM player_notifications WHERE player_uuid = ? AND is_read = FALSE ORDER BY created_at ASC";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "SELECT message, notification_type FROM player_notifications WHERE player_uuid = ? AND is_read = 0 ORDER BY created_at ASC"
+                : "SELECT message, notification_type FROM player_notifications WHERE player_uuid = ? AND is_read = FALSE ORDER BY created_at ASC";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, playerUUID.toString());
                 
@@ -121,7 +146,10 @@ public class NotificationManager implements Listener {
      */
     public void markAllAsRead(UUID playerUUID) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "UPDATE player_notifications SET is_read = TRUE WHERE player_uuid = ?";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "UPDATE player_notifications SET is_read = 1 WHERE player_uuid = ?"
+                : "UPDATE player_notifications SET is_read = TRUE WHERE player_uuid = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, playerUUID.toString());
                 stmt.executeUpdate();
@@ -136,7 +164,10 @@ public class NotificationManager implements Listener {
      */
     public void cleanupOldNotifications() {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "DELETE FROM player_notifications WHERE is_read = TRUE AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "DELETE FROM player_notifications WHERE is_read = 1 AND created_at < datetime('now','-30 days')"
+                : "DELETE FROM player_notifications WHERE is_read = TRUE AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 int deleted = stmt.executeUpdate();
                 if (deleted > 0) {

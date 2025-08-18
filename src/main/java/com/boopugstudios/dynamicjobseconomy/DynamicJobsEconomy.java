@@ -15,6 +15,7 @@ import com.boopugstudios.dynamicjobseconomy.listeners.JobListener;
 import com.boopugstudios.dynamicjobseconomy.listeners.BusinessListener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.util.logging.Level;
 
 public final class DynamicJobsEconomy extends JavaPlugin {
@@ -37,21 +38,22 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     public void onEnable() {
         instance = this;
         
+        // Detect first run before writing files
+        boolean isFirstRun = !new File(getDataFolder(), "config.yml").exists();
+
         // Save default config
         saveDefaultConfig();
         
         getLogger().info("\n" +
             "  ____              ____             ____  _             _ _           \n" +
             " |  _ \\            |  _ \\           / ___|| |_ _   _  __| (_) ___  ___ \n" +
-            " | |_) | ___   ___ | |_) |_   _  __ \\___ \\| __| | | |/ _` | |/ _ \\/ __|\n" +
+            " | |_) | ___   ___ | |_) |_   _  __ \\___ \\| __| | | |/ _` | |/ _ \\ / __|\n" +
             " |  _ < / _ \\ / _ \\|  __/| | | |/ _` |___) | |_| |_| | (_| | | (_) \\__ \\\n" +
             " |_| \\_\\___/ \\___/|_|   |_| |_|\\__, |____/ \\__|\\__,_|\\__,_|_|\\___/|___/\n" +
             "                                |___/                                   \n");
-        getLogger().info("Starting Dynamic Jobs & Economy Pro v1.0.0");
+        getLogger().info("Starting Dynamic Jobs & Economy Pro v" + getDescription().getVersion());
         getLogger().info("Made with ❤\uFE0F by BooPug Studios");
         
-        // Check if this is first time setup
-        boolean isFirstRun = !getDataFolder().exists();
         
         // Validate configuration before initializing
         if (!validateConfiguration()) {
