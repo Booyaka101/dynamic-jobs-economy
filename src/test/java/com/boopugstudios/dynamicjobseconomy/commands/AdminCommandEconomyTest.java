@@ -7,6 +7,7 @@ import com.boopugstudios.dynamicjobseconomy.jobs.Job;
 import com.boopugstudios.dynamicjobseconomy.jobs.PlayerJobData;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,13 @@ class AdminCommandEconomyTest {
         when(sender.getUniqueId()).thenReturn(UUID.randomUUID());
         when(sender.getName()).thenReturn("Admin");
         when(sender.hasPermission(anyString())).thenReturn(true);
+        doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
+        return sender;
+    }
+
+    private CommandSender mockNonPlayerSender(List<String> messages, boolean hasPermission) {
+        CommandSender sender = mock(CommandSender.class);
+        when(sender.hasPermission(anyString())).thenReturn(hasPermission);
         doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
         return sender;
     }
@@ -640,5 +648,207 @@ class AdminCommandEconomyTest {
                 new String[]{"confirm"});
         assertTrue(handled);
         assertTrue(messages.stream().anyMatch(m -> m.contains("No pending action to confirm")));
+    }
+
+    @Test
+    void confirm_non_player_sender_showsError() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        CommandSender console = mockNonPlayerSender(messages, true);
+        boolean handled = admin.onCommand(console, mock(Command.class), "djeconomy",
+                new String[]{"confirm"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Only players can use confirmations!")));
+    }
+
+    @Test
+    void permission_denied_showsMessage_andNoAction() {
+        EconomyManager eco = mock(EconomyManager.class);
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(eco);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        CommandSender noPerm = mockNonPlayerSender(messages, false);
+
+        boolean handled = admin.onCommand(noPerm, mock(Command.class), "djeconomy",
+                new String[]{"economy", "give", "Alice", "10"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("don't have permission")));
+        verifyNoInteractions(eco);
+    }
+
+    @Test
+    void economy_unknown_player_showsError_andNoEconomyCalls() {
+        EconomyManager eco = mock(EconomyManager.class);
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(eco);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"economy", "give", "Ghost", "10"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("not found or has never joined")));
+        verify(eco, never()).deposit(any(Player.class), anyDouble());
+        verify(eco, never()).depositPlayer(any(OfflinePlayer.class), anyDouble());
+        verify(eco, never()).withdraw(any(Player.class), anyDouble());
+        verify(eco, never()).withdraw(any(OfflinePlayer.class), anyDouble());
+    }
+
+    @Test
+    void setlevel_unknown_player_showsError() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"setlevel", "Ghost", "miner", "5"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("not found or has never joined")));
+    }
+
+    @Test
+    void addxp_unknown_player_showsError() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"addxp", "Ghost", "miner", "5"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("not found or has never joined")));
+    }
+
+    @Test
+    void refreshjobs_unknown_player_showsError_andNoJobCalls() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        JobManager jobMgr = mock(JobManager.class);
+        when(plugin.getJobManager()).thenReturn(jobMgr);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"refreshjobs", "Ghost"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("not found or has never joined")));
+        verify(jobMgr, never()).refreshPlayerData(any(Player.class));
+    }
+
+    @Test
+    void invalidatejobs_unknown_player_showsError_andNoJobCalls() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        JobManager jobMgr = mock(JobManager.class);
+        when(plugin.getJobManager()).thenReturn(jobMgr);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"invalidatejobs", "Ghost"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("not found or has never joined")));
+        verify(jobMgr, never()).invalidatePlayerData(any(Player.class));
+    }
+
+    @Test
+    void tabcomplete_root_commands_empty_and_prefixes() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        Player sender = mockSenderCollectingMessages(new ArrayList<>());
+
+        List<String> all = admin.onTabComplete(sender, mock(Command.class), "djeconomy",
+                new String[]{""});
+        assertTrue(all.contains("reload") && all.contains("setlevel") && all.contains("addxp")
+                && all.contains("economy") && all.contains("refreshjobs") && all.contains("invalidatejobs"));
+
+        List<String> re = admin.onTabComplete(sender, mock(Command.class), "djeconomy",
+                new String[]{"re"});
+        assertTrue(re.contains("reload") && re.contains("refreshjobs") && re.size() == 2);
+
+        List<String> inv = admin.onTabComplete(sender, mock(Command.class), "djeconomy",
+                new String[]{"in"});
+        assertTrue(inv.contains("invalidatejobs") && inv.size() == 1);
+    }
+
+    @Test
+    void usage_economy_when_insufficient_args() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"economy", "give", "Alice"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Usage: /djeconomy economy")));
+    }
+
+    @Test
+    void usage_setlevel_when_insufficient_args() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"setlevel", "Alice", "miner"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Usage: /djeconomy setlevel")));
+    }
+
+    @Test
+    void usage_addxp_when_insufficient_args() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"addxp", "Alice", "miner"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Usage: /djeconomy addxp")));
+    }
+
+    @Test
+    void usage_refreshjobs_when_insufficient_args() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"refreshjobs"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Usage: /djeconomy refreshjobs")));
+    }
+
+    @Test
+    void usage_invalidatejobs_when_insufficient_args() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"invalidatejobs"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Usage: /djeconomy invalidatejobs")));
+    }
+
+    @Test
+    void reload_command_reloadsConfig_and_sendsMessage() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyMap(), new OfflinePlayer[0]);
+        List<String> messages = new ArrayList<>();
+        Player sender = mockSenderCollectingMessages(messages);
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy",
+                new String[]{"reload"});
+        assertTrue(handled);
+        verify(plugin, times(1)).reloadConfig();
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Configuration reloaded!")));
     }
 }
