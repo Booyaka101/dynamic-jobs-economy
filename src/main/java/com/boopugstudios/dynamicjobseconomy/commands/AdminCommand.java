@@ -546,6 +546,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private File getHistoryFile() {
         File dir = plugin.getDataFolder();
+        if (dir == null) {
+            dir = new File(System.getProperty("java.io.tmpdir"), "dje-data");
+        }
         if (!dir.exists()) dir.mkdirs();
         return new File(dir, "admin-economy-history.log");
     }
