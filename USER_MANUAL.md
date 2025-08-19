@@ -134,6 +134,43 @@
 - **WorldGuard**: Respects protected regions
 - **McMMO**: Bonus XP when McMMO skills level up
 
+### **🛡️ Admin Commands**
+
+Admins with `djeconomy.admin` can manage jobs, economy, and cache:
+
+```
+/djeconomy reload
+  Reloads configuration and refreshes managers.
+
+/djeconomy setlevel <player> <job> <level>
+  Sets a player's job level. Works for online and offline players.
+  - Job name is case-insensitive.
+  - Level is clamped to the job's valid range.
+
+/djeconomy addxp <player> <job> <amount>
+  Adds XP to a player's job (online only).
+  - Job name is case-insensitive.
+  - Player must have joined the job.
+
+/djeconomy refreshjobs <player>
+  Immediately reloads a player's job data from the database (online only).
+
+/djeconomy invalidatejobs <player>
+  Invalidates the player's cached job data so it reloads on next access (online only).
+```
+
+Notes:
+- Refresh/Invalidate are restricted to online players to keep cache handling consistent.
+- Setting level for online players updates cache + DB; for offline players it upserts directly to DB.
+
+#### Tab Completion
+- Admin tab completion is case-insensitive.
+- Player name suggestions appear when typing the second argument for `setlevel`, `addxp`, `refreshjobs`, and `invalidatejobs`.
+- For `economy`, suggestions:
+  - Second argument: `give`, `take`, `set`.
+  - Third argument: online player names.
+- For `setlevel` and `addxp`, the third argument suggests job names (case-insensitive).
+
 ### **🆘 Troubleshooting**
 
 #### **Common Issues:**
