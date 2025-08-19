@@ -126,4 +126,20 @@ class AdminCommandTabCompleteTest {
                 new String[]{"invalidatejobs", "B"});
         assertEquals(Collections.singletonList("Bob"), s4);
     }
+
+    @Test
+    void playerSuggestions_emptyPrefix_returnsAll() {
+        DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
+        Player alice = mock(Player.class);
+        when(alice.getName()).thenReturn("Alice");
+        Player bob = mock(Player.class);
+        when(bob.getName()).thenReturn("Bob");
+
+        AdminCommand admin = new TestableAdminCommand(plugin, Arrays.asList(alice, bob));
+
+        // setlevel <player> with empty prefix
+        List<String> s = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"setlevel", ""});
+        assertEquals(Arrays.asList("Alice", "Bob"), s);
+    }
 }
