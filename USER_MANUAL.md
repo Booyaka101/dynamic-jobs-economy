@@ -136,40 +136,55 @@
 
 ### **🛡️ Admin Commands**
 
-Admins with `djeconomy.admin` can manage jobs, economy, and cache:
+Admins can grant full access with `djeconomy.admin` or use granular nodes per subcommand:
 
 ```
 /djeconomy reload
-  Reloads configuration and refreshes managers.
+  Reload configuration. (perm: djeconomy.system.reload)
+
+/djeconomy getlevel <player> <job>
+  Show a player's job level (online/offline). (perm: djeconomy.admin.level.get)
 
 /djeconomy setlevel <player> <job> <level>
-  Sets a player's job level. Works for online and offline players.
-  - Job name is case-insensitive.
-  - Level is clamped to the job's valid range.
+  Set a player's job level (online/offline). (perm: djeconomy.admin.level.set)
+
+/djeconomy resetlevel <player> <job>
+  Reset a player's job level to 1 (online/offline). (perm: djeconomy.admin.level.reset)
 
 /djeconomy addxp <player> <job> <amount>
-  Adds XP to a player's job (online only).
-  - Job name is case-insensitive.
-  - Player must have joined the job.
+  Add XP to a player's job (online only; must have joined the job). (perm: djeconomy.admin.level.addxp)
+
+/djeconomy economy <give|take|set> <player> <amount>
+  Manage player money; supports online/offline. (perm: djeconomy.admin.economy)
+  - Negative amounts rejected; extremely large amounts rejected.
+  - Large amounts (>= 100000) require confirmation using /djeconomy confirm.
+
+/djeconomy confirm
+  Confirm the last pending large economy action. (perm: djeconomy.admin.economy)
+
+/djeconomy history <player> [limit]
+  View recent admin economy actions for a player. (perm: djeconomy.admin.history.view)
 
 /djeconomy refreshjobs <player>
-  Immediately reloads a player's job data from the database (online only).
+  Reload a player's job data from DB (online only). (perm: djeconomy.admin.jobs.refresh)
 
 /djeconomy invalidatejobs <player>
-  Invalidates the player's cached job data so it reloads on next access (online only).
+  Invalidate a player's cached job data (online only). (perm: djeconomy.admin.jobs.invalidate)
 ```
 
 Notes:
-- Refresh/Invalidate are restricted to online players to keep cache handling consistent.
-- Setting level for online players updates cache + DB; for offline players it upserts directly to DB.
+- Refresh/Invalidate require the player to be online.
+- History limit is clamped between 1 and 100; non-numeric defaults to 10. If no entries or file is missing, a friendly message is shown.
+- Economy large-amount confirmation prevents accidental big changes; use `/djeconomy confirm` after the warning.
 
 #### Tab Completion
-- Admin tab completion is case-insensitive.
-- Player name suggestions appear when typing the second argument for `setlevel`, `addxp`, `refreshjobs`, and `invalidatejobs`.
+- Admin tab completion is case-insensitive and permission-aware at the root.
+- Player name suggestions appear for the second argument of `setlevel`, `getlevel`, `resetlevel`, `addxp`, `refreshjobs`, `invalidatejobs`, and `history`.
 - For `economy`, suggestions:
   - Second argument: `give`, `take`, `set`.
   - Third argument: online player names.
 - For `setlevel` and `addxp`, the third argument suggests job names (case-insensitive).
+- For `history`, the optional third argument suggests limits like `5`, `10`, `20`, `50`.
 
 ### **🆘 Troubleshooting**
 

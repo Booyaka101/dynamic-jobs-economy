@@ -74,6 +74,88 @@ class AdminCommandEconomyTest {
     }
 
     @Test
+    void permissionGate_deniesNonAdminWithoutSpecificNode() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new AdminCommand(plugin);
+
+        List<String> messages = new ArrayList<>();
+        CommandSender sender = mock(CommandSender.class);
+        // Default deny all permissions
+        when(sender.hasPermission(anyString())).thenReturn(false);
+        doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
+
+        boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"economy", "give", "Alice", "10"});
+        assertTrue(handled);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("don't have permission")));
+    }
+
+    @Test
+    void reloadAllowed_withSystemReloadPermission_withoutAdmin() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new AdminCommand(plugin);
+
+        List<String> messages = new ArrayList<>();
+        CommandSender sender = mock(CommandSender.class);
+        // Default deny all permissions
+        when(sender.hasPermission(anyString())).thenReturn(false);
+        // Allow only reload node
+        when(sender.hasPermission("djeconomy.system.reload")).thenReturn(true);
+        doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
+
+        boolean handledReload = admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"reload"});
+        assertTrue(handledReload);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Configuration reloaded")));
+
+        messages.clear();
+        // Another subcommand should still be denied without admin
+        boolean handledOther = admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"setlevel", "Alice", "Miner", "3"});
+        assertTrue(handledOther);
+        assertTrue(messages.stream().anyMatch(m -> m.contains("don't have permission")));
+    }
+
+    @Test
+    void granularPermissions_allow_whenSpecificNodePresent() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new AdminCommand(plugin);
+
+        String[] subs = {"economy","setlevel","getlevel","resetlevel","addxp","refreshjobs","invalidatejobs","history"};
+        String[] nodes = {"djeconomy.admin.economy","djeconomy.admin.level.set","djeconomy.admin.level.get","djeconomy.admin.level.reset","djeconomy.admin.level.addxp","djeconomy.admin.jobs.refresh","djeconomy.admin.jobs.invalidate","djeconomy.admin.history.view"};
+
+        for (int i = 0; i < subs.length; i++) {
+            List<String> messages = new ArrayList<>();
+            CommandSender sender = mock(CommandSender.class);
+            when(sender.hasPermission(anyString())).thenReturn(false);
+            when(sender.hasPermission(nodes[i])).thenReturn(true);
+            doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
+
+            boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{subs[i]});
+            assertTrue(handled, "Expected handler to process subcommand: " + subs[i]);
+            assertFalse(messages.stream().anyMatch(m -> m.contains("don't have permission")),
+                    "Should not show permission denial for subcommand: " + subs[i]);
+        }
+    }
+
+    @Test
+    void granularPermissions_deny_withoutSpecificNode() {
+        DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(null);
+        AdminCommand admin = new AdminCommand(plugin);
+
+        String[] subs = {"economy","setlevel","getlevel","resetlevel","addxp","refreshjobs","invalidatejobs","history"};
+
+        for (String sub : subs) {
+            List<String> messages = new ArrayList<>();
+            CommandSender sender = mock(CommandSender.class);
+            when(sender.hasPermission(anyString())).thenReturn(false);
+            doAnswer(inv -> { messages.add(inv.getArgument(0)); return null; }).when(sender).sendMessage(anyString());
+
+            boolean handled = admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{sub});
+            assertTrue(handled, "Expected handler to process subcommand: " + sub);
+            assertTrue(messages.stream().anyMatch(m -> m.contains("don't have permission")),
+                    "Should show permission denial for subcommand: " + sub);
+        }
+    }
+
+    @Test
     void economy_invalidAmount_nonNumeric() {
         EconomyManager eco = mock(EconomyManager.class);
         DynamicJobsEconomy plugin = setupPluginWithConfigAndEconomy(eco);

@@ -108,10 +108,22 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DynamicJobs§8] ");
         
-        // Accept either the new permission or the legacy wildcard for backward compatibility
-        if (!(sender.hasPermission("djeconomy.admin") || sender.hasPermission("dynamicjobs.admin.*"))) {
-            sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
-            return true;
+        // Backward compatibility: full admin or legacy wildcard grants everything.
+        boolean hasAdmin = sender.hasPermission("djeconomy.admin") || sender.hasPermission("dynamicjobs.admin.*");
+        if (!hasAdmin && args.length > 0) {
+            String sub = args[0].toLowerCase();
+            String requiredNode = getRequiredPermissionForSub(sub);
+            if (requiredNode != null && !sender.hasPermission(requiredNode)) {
+                sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
+                return true;
+            }
+            if (requiredNode == null && !hasAdmin) {
+                // If subcommand is unknown and user isn't admin, deny by default
+                sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
+                return true;
+            }
+        } else if (!hasAdmin) {
+            // No args and not admin: still show help but it's harmless; alternatively could deny.
         }
         
         if (args.length == 0) {
@@ -435,8 +447,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs").stream()
-                .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
+            List<String> base = Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs");
+            String pref = args[0].toLowerCase();
+            return base.stream()
+                .filter(s -> s.toLowerCase().startsWith(pref))
+                .filter(s -> isSubAllowed(sender, s))
                 .collect(Collectors.toList());
         }
 
@@ -476,6 +491,41 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         return new ArrayList<>();
+    }
+
+    private boolean isSubAllowed(CommandSender sender, String sub) {
+        // In tests, sender may be null; allow all suggestions in that case
+        if (sender == null) return true;
+        // Admin or legacy wildcard sees all
+        if (sender.hasPermission("djeconomy.admin") || sender.hasPermission("dynamicjobs.admin.*")) return true;
+        String node = getRequiredPermissionForSub(sub.toLowerCase());
+        return node == null || sender.hasPermission(node);
+    }
+
+    private String getRequiredPermissionForSub(String sub) {
+        switch (sub) {
+            case "reload":
+                return "djeconomy.system.reload";
+            case "economy":
+            case "confirm":
+                return "djeconomy.admin.economy";
+            case "setlevel":
+                return "djeconomy.admin.level.set";
+            case "getlevel":
+                return "djeconomy.admin.level.get";
+            case "resetlevel":
+                return "djeconomy.admin.level.reset";
+            case "addxp":
+                return "djeconomy.admin.level.addxp";
+            case "refreshjobs":
+                return "djeconomy.admin.jobs.refresh";
+            case "invalidatejobs":
+                return "djeconomy.admin.jobs.invalidate";
+            case "history":
+                return "djeconomy.admin.history.view";
+            default:
+                return null;
+        }
     }
 
     private void handleRefreshJobs(CommandSender sender, String playerName, String prefix) {

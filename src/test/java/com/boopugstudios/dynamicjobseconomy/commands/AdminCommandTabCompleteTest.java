@@ -1,8 +1,8 @@
 package com.boopugstudios.dynamicjobseconomy.commands;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
-import com.boopugstudios.dynamicjobseconomy.jobs.JobManager;
 import com.boopugstudios.dynamicjobseconomy.jobs.Job;
+import com.boopugstudios.dynamicjobseconomy.jobs.JobManager;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class AdminCommandTabCompleteTest {
@@ -39,6 +40,34 @@ class AdminCommandTabCompleteTest {
         // With prefix
         List<String> re = admin.onTabComplete(null, mock(Command.class), "djeconomy", new String[]{"re"});
         assertEquals(Arrays.asList("reload", "resetlevel", "refreshjobs"), re);
+    }
+
+    @Test
+    void rootSuggestions_filteredByPermissions_nonAdmin() {
+        DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
+        AdminCommand admin = new AdminCommand(plugin);
+
+        // Sender with no permissions gets no root suggestions
+        org.bukkit.command.CommandSender senderNone = mock(org.bukkit.command.CommandSender.class);
+        when(senderNone.hasPermission(anyString())).thenReturn(false);
+        List<String> none = admin.onTabComplete(senderNone, mock(Command.class), "djeconomy", new String[]{""});
+        assertTrue(none.isEmpty());
+
+        // Sender with only getlevel permission sees only getlevel
+        org.bukkit.command.CommandSender senderGet = mock(org.bukkit.command.CommandSender.class);
+        when(senderGet.hasPermission(anyString())).thenReturn(false);
+        when(senderGet.hasPermission("djeconomy.admin.level.get")).thenReturn(true);
+        List<String> onlyGet = admin.onTabComplete(senderGet, mock(Command.class), "djeconomy", new String[]{""});
+        assertEquals(Collections.singletonList("getlevel"), onlyGet);
+
+        // Sender with only reload permission sees only reload (also with prefix filter)
+        org.bukkit.command.CommandSender senderReload = mock(org.bukkit.command.CommandSender.class);
+        when(senderReload.hasPermission(anyString())).thenReturn(false);
+        when(senderReload.hasPermission("djeconomy.system.reload")).thenReturn(true);
+        List<String> onlyReload = admin.onTabComplete(senderReload, mock(Command.class), "djeconomy", new String[]{""});
+        assertEquals(Collections.singletonList("reload"), onlyReload);
+        List<String> rePref = admin.onTabComplete(senderReload, mock(Command.class), "djeconomy", new String[]{"re"});
+        assertEquals(Collections.singletonList("reload"), rePref);
     }
 
     @Test

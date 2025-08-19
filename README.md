@@ -31,15 +31,25 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 
 **For admins:**
 - `/djeconomy reload` - Reload config
-- `/djeconomy economy <give|take|set> <player> <amount>` - Manage player money
-- `/djeconomy setlevel <player> <job> <level>` - Set a player's job level (supports offline). Job name is case-insensitive.
-- `/djeconomy addxp <player> <job> <amount>` - Add XP to a player's job (online only; player must have joined the job). Job name is case-insensitive.
+- `/djeconomy getlevel <player> <job>` - Show a player's job level (supports offline)
+- `/djeconomy setlevel <player> <job> <level>` - Set a player's job level (supports offline)
+- `/djeconomy resetlevel <player> <job>` - Reset a player's job level to 1 (supports offline)
+- `/djeconomy addxp <player> <job> <amount>` - Add XP to a player's job (online only; player must have joined the job)
+- `/djeconomy economy <give|take|set> <player> <amount>` - Manage player money (supports offline)
+- `/djeconomy confirm` - Confirm the last pending large economy action
+- `/djeconomy history <player> [limit]` - View recent admin economy actions for a player
 - `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
 - `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
 
 ### Tab Completion
 
 - Admin command tab completion is case-insensitive for both player names and job names.
+
+### Permissions
+
+- Grant all admin features with `djeconomy.admin` or use granular nodes:
+  - `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`,
+    `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`.
 
 That's it. Everything else is pretty self-explanatory.
 

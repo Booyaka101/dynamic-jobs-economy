@@ -346,6 +346,14 @@ permissions:
       djeconomy.system.reload: true
       djeconomy.system.debug: true
       djeconomy.system.backup: true
+      djeconomy.admin.economy: true
+      djeconomy.admin.level.set: true
+      djeconomy.admin.level.get: true
+      djeconomy.admin.level.reset: true
+      djeconomy.admin.level.addxp: true
+      djeconomy.admin.jobs.refresh: true
+      djeconomy.admin.jobs.invalidate: true
+      djeconomy.admin.history.view: true
 
   djeconomy.admin.revenue.manual:
     description: Manually generate revenue for any business
@@ -364,6 +372,32 @@ permissions:
     default: false
   djeconomy.admin.fire.force:
     description: Force fire employees from any business
+    default: false
+
+  # Granular admin permissions for refined command access
+  djeconomy.admin.economy:
+    description: Use economy admin commands (give, take, set) and confirm
+    default: false
+  djeconomy.admin.level.set:
+    description: Set a player's job level
+    default: false
+  djeconomy.admin.level.get:
+    description: View a player's job level
+    default: false
+  djeconomy.admin.level.reset:
+    description: Reset a player's job level to 1
+    default: false
+  djeconomy.admin.level.addxp:
+    description: Add XP to a player's job (online only)
+    default: false
+  djeconomy.admin.jobs.refresh:
+    description: Refresh a player's job data (online only)
+    default: false
+  djeconomy.admin.jobs.invalidate:
+    description: Invalidate a player's cached job data (online only)
+    default: false
+  djeconomy.admin.history.view:
+    description: View recent admin economy actions for a player
     default: false
 
   djeconomy.system.*:
