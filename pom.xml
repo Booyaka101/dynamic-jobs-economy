@@ -8,7 +8,7 @@
     <artifactId>DynamicJobsEconomy</artifactId>
     <version>1.0.2</version>
     <packaging>jar</packaging>
-
+  
     <name>DynamicJobsEconomy</name>
     <description>Advanced job and economy plugin with RPG mechanics and player businesses by BooPug Studios</description>
 
@@ -131,13 +131,7 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
-            <version>5.10.0</version>
-            <scope>test</scope>
-        </dependency>
-        
+             
         <!-- Vault API -->
         <dependency>
             <groupId>com.github.MilkBowl</groupId>
