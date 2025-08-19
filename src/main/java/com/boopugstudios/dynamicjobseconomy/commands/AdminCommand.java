@@ -92,11 +92,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         final double amount;
         final long timestamp;
         
-        PendingAdminAction(String action, String playerName, double amount) {
+        PendingAdminAction(String action, String playerName, double amount, long timestamp) {
             this.action = action;
             this.playerName = playerName;
             this.amount = amount;
-            this.timestamp = System.currentTimeMillis();
+            this.timestamp = timestamp;
         }
         
         boolean isExpired(long now, long expiryMillis) {
@@ -334,8 +334,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         !pending.action.equals(action) || !pending.playerName.equals(playerName) || 
                         pending.amount != amount) {
                         
-                        // Store pending action
-                        pendingConfirmations.put(senderUUID, new PendingAdminAction(action, playerName, amount));
+                        // Store pending action using the time seam for testability
+                        pendingConfirmations.put(senderUUID, new PendingAdminAction(action, playerName, amount, nowMillis()));
                         Map<String, String> ph1 = new HashMap<>();
                         ph1.put("amount", String.format("%.2f", amount));
                         sender.sendMessage(prefix + msg("admin.large_detected", ph1, "§e⚠ Large amount detected: $%amount%"));
