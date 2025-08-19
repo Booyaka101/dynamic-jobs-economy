@@ -37,13 +37,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
      */
     private PlayerResolution resolvePlayer(String playerName) {
         // Try online player first
-        Player onlinePlayer = Bukkit.getPlayer(playerName);
+        Player onlinePlayer = getPlayerByName(playerName);
         if (onlinePlayer != null) {
             return new PlayerResolution(onlinePlayer, onlinePlayer, true);
         }
         
         // Try to find in server's cached offline players
-        for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
+        for (OfflinePlayer offlinePlayer : getOfflinePlayersArray()) {
             if (offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(playerName)) {
                 if (offlinePlayer.hasPlayedBefore()) {
                     return new PlayerResolution(null, offlinePlayer, false);
@@ -381,6 +381,20 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
      */
     protected Collection<? extends Player> getOnlinePlayers() {
         return Bukkit.getOnlinePlayers();
+    }
+
+    /**
+     * Seam for resolving a player by name (online lookup) for testing without static mocking.
+     */
+    protected Player getPlayerByName(String name) {
+        return Bukkit.getPlayer(name);
+    }
+
+    /**
+     * Seam for retrieving offline players cache for testing without static mocking.
+     */
+    protected OfflinePlayer[] getOfflinePlayersArray() {
+        return Bukkit.getOfflinePlayers();
     }
 
     @Override
