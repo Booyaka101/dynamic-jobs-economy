@@ -521,6 +521,7 @@ class AdminCommandEconomyTest {
         assertTrue(msg1.stream().anyMatch(m -> m.contains("Refreshed job data for") && m.contains("Alice")));
 
         // Offline error
+        reset(jobMgr);
         List<String> msg2 = new ArrayList<>();
         Player sender2 = mockSenderCollectingMessages(msg2);
         boolean handled2 = adminOffline.onCommand(sender2, mock(Command.class), "djeconomy",
@@ -556,6 +557,7 @@ class AdminCommandEconomyTest {
         assertTrue(msg1.stream().anyMatch(m -> m.contains("Invalidated cached job data for") && m.contains("Alice")));
 
         // Offline error
+        reset(jobMgr);
         List<String> msg2 = new ArrayList<>();
         Player sender2 = mockSenderCollectingMessages(msg2);
         boolean handled2 = adminOffline.onCommand(sender2, mock(Command.class), "djeconomy",
