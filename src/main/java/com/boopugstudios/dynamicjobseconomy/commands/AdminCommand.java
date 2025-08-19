@@ -11,6 +11,10 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -19,6 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class AdminCommand implements CommandExecutor, TabCompleter {
     
@@ -152,6 +161,28 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 handleInvalidateJobs(sender, args[1], prefix);
+                break;
+            case "getlevel":
+                if (args.length < 3) {
+                    sender.sendMessage(prefix + "§cUsage: /djeconomy getlevel <player> <job>");
+                    return true;
+                }
+                handleGetLevel(sender, args[1], args[2], prefix);
+                break;
+            case "resetlevel":
+                if (args.length < 3) {
+                    sender.sendMessage(prefix + "§cUsage: /djeconomy resetlevel <player> <job>");
+                    return true;
+                }
+                handleResetLevel(sender, args[1], args[2], prefix);
+                break;
+            case "history":
+                if (args.length < 2) {
+                    sender.sendMessage(prefix + "§cUsage: /djeconomy history <player> [limit]");
+                    return true;
+                }
+                String limit = args.length >= 3 ? args[2] : null;
+                handleHistory(sender, args[1], limit, prefix);
                 break;
                 
             default:
@@ -364,14 +395,18 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         String adminName = sender instanceof Player ? ((Player) sender).getName() : "CONSOLE";
         plugin.getLogger().info(String.format("[ADMIN] %s used %s on %s for $%.2f", 
             adminName, action, targetPlayer, amount));
+        appendHistory(adminName, action, targetPlayer, amount);
     }
     
     private void showAdminHelp(CommandSender sender, String prefix) {
         sender.sendMessage("§8§m----------§r §6Admin Help §8§m----------");
         sender.sendMessage("§f/djeconomy reload §7- Reload configuration");
         sender.sendMessage("§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)");
+        sender.sendMessage("§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)");
+        sender.sendMessage("§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1");
         sender.sendMessage("§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)");
         sender.sendMessage("§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money");
+        sender.sendMessage("§f/djeconomy history <player> [limit] §7- View recent admin economy actions");
         sender.sendMessage("§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)");
         sender.sendMessage("§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)");
     }
@@ -400,7 +435,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setlevel", "addxp", "economy", "refreshjobs", "invalidatejobs").stream()
+            return Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs").stream()
                 .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                 .collect(Collectors.toList());
         }
@@ -412,7 +447,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
             }
             if (args[0].equalsIgnoreCase("refreshjobs") || args[0].equalsIgnoreCase("invalidatejobs")
-                    || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
+                    || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("getlevel")
+                    || args[0].equalsIgnoreCase("resetlevel") || args[0].equalsIgnoreCase("addxp")
+                    || args[0].equalsIgnoreCase("history")) {
                 return getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
@@ -421,13 +458,19 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 3) {
-            if (args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
+            if (args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")
+                || args[0].equalsIgnoreCase("getlevel") || args[0].equalsIgnoreCase("resetlevel")) {
                 return JobNameUtil.suggestJobs(plugin.getJobManager().getJobs().keySet(), args[2]);
             }
             if (args[0].equalsIgnoreCase("economy")) {
                 return getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            if (args[0].equalsIgnoreCase("history")) {
+                return Arrays.asList("5", "10", "20", "50").stream()
+                    .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
         }
@@ -461,5 +504,102 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
         plugin.getJobManager().invalidatePlayerData(resolution.onlinePlayer);
         sender.sendMessage(prefix + "§aInvalidated cached job data for " + resolution.getName());
+    }
+
+    private void handleGetLevel(CommandSender sender, String playerName, String jobName, String prefix) {
+        PlayerResolution resolution = resolvePlayer(playerName);
+        if (!resolution.isValid()) {
+            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            return;
+        }
+        com.boopugstudios.dynamicjobseconomy.jobs.Job job = plugin.getJobManager().getJob(jobName);
+        if (job == null) {
+            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            return;
+        }
+        String canonical = job.getName();
+        Integer level = resolution.isOnline
+            ? plugin.getJobManager().getJobLevel(resolution.onlinePlayer, canonical)
+            : plugin.getJobManager().getOfflineJobLevel(resolution.offlinePlayer, canonical);
+        if (level == null) {
+            sender.sendMessage(prefix + "§c" + resolution.getName() + " has not joined the job '" + canonical + "'.");
+            return;
+        }
+        sender.sendMessage(prefix + "§a" + resolution.getName() + "'s '" + canonical + "' level is " + level + (resolution.isOnline ? " (online)" : " (offline)"));
+    }
+
+    private void handleResetLevel(CommandSender sender, String playerName, String jobName, String prefix) {
+        PlayerResolution resolution = resolvePlayer(playerName);
+        if (!resolution.isValid()) {
+            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            return;
+        }
+        boolean ok = resolution.isOnline
+            ? plugin.getJobManager().setJobLevel(resolution.onlinePlayer, jobName, 1)
+            : plugin.getJobManager().setOfflineJobLevel(resolution.offlinePlayer, jobName, 1);
+        if (!ok) {
+            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            return;
+        }
+        sender.sendMessage(prefix + "§aReset " + resolution.getName() + "'s '" + (plugin.getJobManager().getJob(jobName) != null ? plugin.getJobManager().getJob(jobName).getName() : jobName) + "' level to 1" + (resolution.isOnline ? " (online)" : " (offline)"));
+    }
+
+    private File getHistoryFile() {
+        File dir = plugin.getDataFolder();
+        if (!dir.exists()) dir.mkdirs();
+        return new File(dir, "admin-economy-history.log");
+    }
+
+    private void appendHistory(String admin, String action, String target, double amount) {
+        File file = getHistoryFile();
+        try (PrintWriter out = new PrintWriter(new FileWriter(file, true))) {
+            out.printf("%d|%s|%s|%s|%.2f%n", System.currentTimeMillis(), admin, action, target, amount);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to write history: " + e.getMessage());
+        }
+    }
+
+    private void handleHistory(CommandSender sender, String playerName, String limitStr, String prefix) {
+        int limit = 10;
+        if (limitStr != null) {
+            try { limit = Integer.parseInt(limitStr); } catch (NumberFormatException ignored) {}
+        }
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+
+        Path path = getHistoryFile().toPath();
+        if (!Files.exists(path)) {
+            sender.sendMessage(prefix + "§7No history found for '" + playerName + "'.");
+            return;
+        }
+        try {
+            List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            List<String> filtered = new ArrayList<>();
+            for (int i = lines.size() - 1; i >= 0 && filtered.size() < limit; i--) {
+                String line = lines.get(i);
+                String[] parts = line.split("\\|", -1);
+                if (parts.length != 5) continue;
+                String target = parts[3];
+                if (target.equalsIgnoreCase(playerName)) {
+                    long ts;
+                    try { ts = Long.parseLong(parts[0]); } catch (NumberFormatException ex) { ts = System.currentTimeMillis(); }
+                    String admin = parts[1];
+                    String action = parts[2];
+                    String amount = parts[4];
+                    String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(ts));
+                    filtered.add(String.format("§7[%s] §f%s §7-> §6%s §7$%s", time, admin, action + " " + target, amount));
+                }
+            }
+            if (filtered.isEmpty()) {
+                sender.sendMessage(prefix + "§7No history found for '" + playerName + "'.");
+                return;
+            }
+            sender.sendMessage(prefix + "§eShowing last " + filtered.size() + " entr" + (filtered.size() == 1 ? "y" : "ies") + " for '" + playerName + "':");
+            for (String msg : filtered) {
+                sender.sendMessage(msg);
+            }
+        } catch (IOException e) {
+            sender.sendMessage(prefix + "§cFailed to read history: " + e.getMessage());
+        }
     }
 }

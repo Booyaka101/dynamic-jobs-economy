@@ -366,12 +366,12 @@ public Job getJob(String name) {
                 ensureStmt.executeUpdate();
             }
 
-            // Upsert job level; keep existing experience if row exists
+            // Upsert job level; reset experience to 0 as we do for online players
             String sql = isSQLite
                 ? "INSERT INTO job_levels (player_uuid, job_name, level, experience) VALUES (?, ?, ?, 0) " +
-                  "ON CONFLICT(player_uuid, job_name) DO UPDATE SET level = excluded.level"
+                  "ON CONFLICT(player_uuid, job_name) DO UPDATE SET level = excluded.level, experience = 0"
                 : "INSERT INTO job_levels (player_uuid, job_name, level, experience) VALUES (?, ?, ?, 0) " +
-                  "ON DUPLICATE KEY UPDATE level = VALUES(level)";
+                  "ON DUPLICATE KEY UPDATE level = VALUES(level), experience = 0";
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, offlinePlayer.getUniqueId().toString());
@@ -395,5 +395,40 @@ public Job getJob(String name) {
         PlayerJobData data = playerData.computeIfAbsent(player.getUniqueId(), PlayerJobData::new);
         data.setLoaded(false);
         loadPlayerJobData(player, data);
+    }
+
+    /**
+     * Returns the current job level for an online player, or null if the job is unknown or the player has not joined it.
+     */
+    public Integer getJobLevel(Player player, String jobName) {
+        Job job = getJob(jobName);
+        if (job == null) return null;
+        String canonical = job.getName();
+        PlayerJobData data = getPlayerData(player);
+        if (!data.hasJob(canonical)) return null;
+        return data.getJobLevel(canonical).getLevel();
+    }
+
+    /**
+     * Returns the current job level for an offline player by querying the database, or null if not found or job unknown.
+     */
+    public Integer getOfflineJobLevel(OfflinePlayer offlinePlayer, String jobName) {
+        Job job = getJob(jobName);
+        if (job == null) return null;
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT level FROM job_levels WHERE player_uuid = ? AND job_name = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, offlinePlayer.getUniqueId().toString());
+                stmt.setString(2, job.getName());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("level");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error reading offline job level for " + offlinePlayer.getUniqueId() + ", job=" + job.getName(), e);
+        }
+        return null;
     }
 }
