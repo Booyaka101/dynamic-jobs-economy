@@ -41,6 +41,8 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
 - `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
 
+Note: Large economy amounts (>= 100000) require confirmation within 30 seconds using `/djeconomy confirm`.
+
 ### Tab Completion
 
 - Admin command tab completion is case-insensitive for both player names and job names.

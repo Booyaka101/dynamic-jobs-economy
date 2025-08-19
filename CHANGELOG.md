@@ -1,5 +1,26 @@
 # Dynamic Jobs & Economy Pro - Changelog
 
+## Version 1.0.3 - "Admin Economy Confirmation & Tests" (August 2025)
+
+### 🧪 Testing
+- Added success-path tests for admin economy commands:
+  - `give` executes immediately for small amounts (online)
+  - `take` executes when sufficient balance (online/offline)
+  - `set` executes for online and offline players
+- Added confirmation expiry test for large transactions using a testable time seam (no sleeps).
+
+### 🔧 Code
+- Introduced a time seam in `AdminCommand` via `nowMillis()`.
+- Refactored `PendingAdminAction.isExpired(long now)` and updated all call sites.
+- Behavior unchanged for players; enables reliable automated testing of expiry.
+
+### 📚 Docs & CI
+- Verified `permissions.yml`, `README.md`, and `USER_MANUAL.md` align with implementation.
+- Documented large-amount confirmation and 30s expiry window.
+- CI: All tests green.
+
+---
+
 ## Version 1.0.2 - "Admin UX + Tests" (August 2025)
 
 ### ✨ Improvements
