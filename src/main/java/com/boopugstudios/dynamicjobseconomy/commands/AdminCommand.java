@@ -133,13 +133,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         
         switch (args[0].toLowerCase()) {
             case "reload":
-                // Capture old prefix for this message to satisfy expected behavior:
-                // first reload uses OLD prefix; subsequent commands see the NEW one.
-                String oldPrefix = prefix;
+                // Perform reload, then recompute prefix and use the NEW prefix for the success message
                 plugin.reloadConfig();
                 plugin.onReload();
-                // Use the old prefix for the success message
-                sender.sendMessage(oldPrefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
+                String newPrefix = getPrefix();
+                sender.sendMessage(newPrefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
                 break;
             case "confirm":
                 handleConfirmation(sender, prefix);
@@ -352,6 +350,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             }
             
             // Execute the action
+            // Ensure the EconomyManager is available (tests may not mock it)
+            if (plugin.getEconomyManager() == null) {
+                sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
+                return;
+            }
+            
             boolean success = false;
             switch (action.toLowerCase()) {
                 case "give":
