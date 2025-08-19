@@ -25,11 +25,9 @@ class AdminCommandEconomyTest {
             this.byName = byName;
             this.offline = offline;
         }
-        @Override
         protected Player getPlayerByName(String name) {
             return byName.get(name);
         }
-        @Override
         protected OfflinePlayer[] getOfflinePlayersArray() {
             return offline;
         }
