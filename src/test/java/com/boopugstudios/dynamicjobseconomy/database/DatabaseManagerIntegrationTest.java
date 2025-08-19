@@ -12,8 +12,7 @@ import org.mockito.Mockito;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.io.File;
+ 
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -151,6 +150,7 @@ class DatabaseManagerIntegrationTest {
     @Testcontainers
     class MySQLIntegration {
         @Container
+        @SuppressWarnings("resource")
         private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
                 .withDatabaseName("dynamicjobs")
                 .withUsername("test")

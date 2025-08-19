@@ -666,7 +666,7 @@ public class DatabaseManager {
         boolean useSSL = config.getBoolean("database.mysql.useSSL", false);
 
         String url = String.format(
-            "jdbc:mysql://%s:%d/%s?useSSL=%s&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8mb4&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&connectTimeout=10000&socketTimeout=60000&tcpKeepAlive=true",
+            "jdbc:mysql://%s:%d/%s?useSSL=%s&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&connectTimeout=10000&socketTimeout=60000&tcpKeepAlive=true",
             host, port, database, Boolean.toString(useSSL)
         );
         return DriverManager.getConnection(url, username, password);
