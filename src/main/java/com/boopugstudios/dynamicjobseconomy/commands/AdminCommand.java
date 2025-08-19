@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -374,7 +375,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)");
         sender.sendMessage("§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)");
     }
-    
+
+    /**
+     * Seam for retrieving online players to aid testing without static mocking.
+     */
+    protected Collection<? extends Player> getOnlinePlayers() {
+        return Bukkit.getOnlinePlayers();
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
@@ -391,7 +399,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             }
             if (args[0].equalsIgnoreCase("refreshjobs") || args[0].equalsIgnoreCase("invalidatejobs")
                     || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
-                return Bukkit.getOnlinePlayers().stream()
+                return getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
                     .collect(Collectors.toList());
@@ -403,7 +411,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 return JobNameUtil.suggestJobs(plugin.getJobManager().getJobs().keySet(), args[2]);
             }
             if (args[0].equalsIgnoreCase("economy")) {
-                return Bukkit.getOnlinePlayers().stream()
+                return getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());

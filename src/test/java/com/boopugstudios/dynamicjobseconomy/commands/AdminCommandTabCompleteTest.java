@@ -3,11 +3,9 @@ package com.boopugstudios.dynamicjobseconomy.commands;
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
 import com.boopugstudios.dynamicjobseconomy.jobs.JobManager;
 import com.boopugstudios.dynamicjobseconomy.jobs.Job;
-import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import java.util.*;
 
@@ -16,10 +14,23 @@ import static org.mockito.Mockito.*;
 
 class AdminCommandTabCompleteTest {
 
+    private static class TestableAdminCommand extends AdminCommand {
+        private final List<Player> online;
+        TestableAdminCommand(DynamicJobsEconomy plugin, List<Player> online) {
+            super(plugin);
+            this.online = online;
+        }
+
+        @Override
+        protected Collection<? extends Player> getOnlinePlayers() {
+            return online;
+        }
+    }
+
     @Test
     void subcommandSuggestions_filterByPrefix() {
         DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
-        AdminCommand admin = new AdminCommand(plugin);
+        AdminCommand admin = new TestableAdminCommand(plugin, Collections.emptyList());
 
         // No prefix
         List<String> all = admin.onTabComplete(null, mock(Command.class), "djeconomy", new String[]{""});
@@ -69,54 +80,50 @@ class AdminCommandTabCompleteTest {
     @Test
     void economyPlayerSuggestions_thirdArg() {
         DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
-        AdminCommand admin = new AdminCommand(plugin);
+        // AdminCommand instance will be created with test seam below
 
         Player alice = mock(Player.class);
         when(alice.getName()).thenReturn("Alice");
         Player bob = mock(Player.class);
         when(bob.getName()).thenReturn("Bob");
 
-        try (MockedStatic<Bukkit> mocked = mockStatic(Bukkit.class)) {
-            mocked.when(Bukkit::getOnlinePlayers).thenReturn(Arrays.asList(alice, bob));
+        AdminCommand admin = new TestableAdminCommand(plugin, Arrays.asList(alice, bob));
 
-            List<String> suggestions = admin.onTabComplete(null, mock(Command.class), "djeconomy",
-                    new String[]{"economy", "give", "a"});
-            assertEquals(Collections.singletonList("Alice"), suggestions);
-        }
+        List<String> suggestions = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"economy", "give", "a"});
+        assertEquals(Collections.singletonList("Alice"), suggestions);
     }
 
     @Test
     void playerSuggestions_secondArg_forVariousCommands() {
         DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
-        AdminCommand admin = new AdminCommand(plugin);
+        // AdminCommand instance will be created with test seam below
 
         Player alice = mock(Player.class);
         when(alice.getName()).thenReturn("Alice");
         Player bob = mock(Player.class);
         when(bob.getName()).thenReturn("Bob");
 
-        try (MockedStatic<Bukkit> mocked = mockStatic(Bukkit.class)) {
-            mocked.when(Bukkit::getOnlinePlayers).thenReturn(Arrays.asList(alice, bob));
+        AdminCommand admin = new TestableAdminCommand(plugin, Arrays.asList(alice, bob));
 
-            // setlevel <player>
-            List<String> s1 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
-                    new String[]{"setlevel", "a"});
-            assertEquals(Collections.singletonList("Alice"), s1);
+        // setlevel <player>
+        List<String> s1 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"setlevel", "a"});
+        assertEquals(Collections.singletonList("Alice"), s1);
 
-            // addxp <player>
-            List<String> s2 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
-                    new String[]{"addxp", "A"});
-            assertEquals(Collections.singletonList("Alice"), s2);
+        // addxp <player>
+        List<String> s2 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"addxp", "A"});
+        assertEquals(Collections.singletonList("Alice"), s2);
 
-            // refreshjobs <player>
-            List<String> s3 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
-                    new String[]{"refreshjobs", "b"});
-            assertEquals(Collections.singletonList("Bob"), s3);
+        // refreshjobs <player>
+        List<String> s3 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"refreshjobs", "b"});
+        assertEquals(Collections.singletonList("Bob"), s3);
 
-            // invalidatejobs <player>
-            List<String> s4 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
-                    new String[]{"invalidatejobs", "B"});
-            assertEquals(Collections.singletonList("Bob"), s4);
-        }
+        // invalidatejobs <player>
+        List<String> s4 = admin.onTabComplete(null, mock(Command.class), "djeconomy",
+                new String[]{"invalidatejobs", "B"});
+        assertEquals(Collections.singletonList("Bob"), s4);
     }
 }
