@@ -134,10 +134,16 @@ public class EconomyManager {
         }
         
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = """
-                INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE money = ?, last_seen = CURRENT_TIMESTAMP
-            """;
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? """
+                    INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
+                    ON CONFLICT(uuid) DO UPDATE SET money = ?, last_seen = CURRENT_TIMESTAMP
+                """
+                : """
+                    INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE money = ?, last_seen = CURRENT_TIMESTAMP
+                """;
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, player.getUniqueId().toString());
@@ -155,7 +161,10 @@ public class EconomyManager {
     
     private void createPlayerRecord(Player player) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "INSERT IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "INSERT OR IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)"
+                : "INSERT IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, player.getUniqueId().toString());
                 stmt.setString(2, player.getName());
@@ -205,10 +214,16 @@ public class EconomyManager {
         }
         
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = """
-                INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE money = ?, last_seen = CURRENT_TIMESTAMP
-            """;
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? """
+                    INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
+                    ON CONFLICT(uuid) DO UPDATE SET money = ?, last_seen = CURRENT_TIMESTAMP
+                """
+                : """
+                    INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE money = ?, last_seen = CURRENT_TIMESTAMP
+                """;
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, player.getUniqueId().toString());
@@ -226,7 +241,10 @@ public class EconomyManager {
     
     private void createPlayerRecordOffline(OfflinePlayer player, double startingMoney) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = "INSERT IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)";
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+            String sql = isSQLite
+                ? "INSERT OR IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)"
+                : "INSERT IGNORE INTO players (uuid, username, money) VALUES (?, ?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, player.getUniqueId().toString());
                 stmt.setString(2, player.getName() != null ? player.getName() : "Unknown");

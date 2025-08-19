@@ -9,10 +9,12 @@ public class PlayerJobData {
     
     private final UUID playerUUID;
     private final Map<String, JobLevel> jobLevels;
+    private boolean loaded;
     
     public PlayerJobData(UUID playerUUID) {
         this.playerUUID = playerUUID;
         this.jobLevels = new HashMap<>();
+        this.loaded = false;
     }
     
     public void addJob(String jobName) {
@@ -43,5 +45,13 @@ public class PlayerJobData {
     
     public Map<String, JobLevel> getAllJobLevels() {
         return new HashMap<>(jobLevels);
+    }
+
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    public void setLoaded(boolean loaded) {
+        this.loaded = loaded;
     }
 }

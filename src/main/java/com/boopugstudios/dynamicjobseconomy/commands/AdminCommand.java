@@ -1,6 +1,7 @@
 package com.boopugstudios.dynamicjobseconomy.commands;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.util.JobNameUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -137,6 +138,20 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 }
                 handleAddXP(sender, args[1], args[2], args[3], prefix);
                 break;
+            case "refreshjobs":
+                if (args.length < 2) {
+                    sender.sendMessage(prefix + "§cUsage: /djeconomy refreshjobs <player>");
+                    return true;
+                }
+                handleRefreshJobs(sender, args[1], prefix);
+                break;
+            case "invalidatejobs":
+                if (args.length < 2) {
+                    sender.sendMessage(prefix + "§cUsage: /djeconomy invalidatejobs <player>");
+                    return true;
+                }
+                handleInvalidateJobs(sender, args[1], prefix);
+                break;
                 
             default:
                 showAdminHelp(sender, prefix);
@@ -147,29 +162,32 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleSetLevel(CommandSender sender, String playerName, String jobName, String levelStr, String prefix) {
-        // Use modern player resolution
         PlayerResolution resolution = resolvePlayer(playerName);
-        
         if (!resolution.isValid()) {
             sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
             return;
         }
-        
-        if (!resolution.isOnline) {
-            sender.sendMessage(prefix + "§7Note: Player '" + playerName + "' is offline. Processing transaction...");
-        }
-        
+        int level;
         try {
-            int level = Integer.parseInt(levelStr);
-            // Implementation would set the player's job level
-            if (resolution.isOnline) {
-                sender.sendMessage(prefix + "§aSet " + resolution.getName() + "'s " + jobName + " level to " + level);
-            } else {
-                sender.sendMessage(prefix + "§aSet " + resolution.getName() + "'s " + jobName + " level to " + level);
-            }
+            level = Integer.parseInt(levelStr);
         } catch (NumberFormatException e) {
             sender.sendMessage(prefix + "§cInvalid level number!");
+            return;
         }
+
+        boolean ok;
+        if (resolution.isOnline) {
+            ok = plugin.getJobManager().setJobLevel(resolution.onlinePlayer, jobName, level);
+        } else {
+            ok = plugin.getJobManager().setOfflineJobLevel(resolution.offlinePlayer, jobName, level);
+        }
+
+        if (!ok) {
+            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            return;
+        }
+
+        sender.sendMessage(prefix + "§aSet " + resolution.getName() + "'s " + jobName + " level to " + level + (resolution.isOnline ? " (online)" : " (offline)") );
     }
     
     private void handleAddXP(CommandSender sender, String playerName, String jobName, String xpStr, String prefix) {
@@ -188,8 +206,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         
         try {
             int xp = Integer.parseInt(xpStr);
-            plugin.getJobManager().addExperience(resolution.onlinePlayer, jobName, xp);
-            sender.sendMessage(prefix + "§aAdded " + xp + " XP to " + resolution.getName() + "'s " + jobName + " job");
+            // Resolve job (case-insensitive)
+            com.boopugstudios.dynamicjobseconomy.jobs.Job job = plugin.getJobManager().getJob(jobName);
+            if (job == null) {
+                sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+                return;
+            }
+            String canonical = job.getName();
+            // Validate player has joined the job
+            com.boopugstudios.dynamicjobseconomy.jobs.PlayerJobData pdata = plugin.getJobManager().getPlayerData(resolution.onlinePlayer);
+            if (!pdata.hasJob(canonical)) {
+                sender.sendMessage(prefix + "§c" + resolution.getName() + " has not joined the job '" + canonical + "'.");
+                return;
+            }
+            plugin.getJobManager().addExperience(resolution.onlinePlayer, canonical, xp);
+            sender.sendMessage(prefix + "§aAdded " + xp + " XP to " + resolution.getName() + "'s '" + canonical + "' job");
         } catch (NumberFormatException e) {
             sender.sendMessage(prefix + "§cInvalid XP amount!");
         }
@@ -337,25 +368,76 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void showAdminHelp(CommandSender sender, String prefix) {
         sender.sendMessage("§8§m----------§r §6Admin Help §8§m----------");
         sender.sendMessage("§f/djeconomy reload §7- Reload configuration");
-        sender.sendMessage("§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level");
-        sender.sendMessage("§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job");
+        sender.sendMessage("§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)");
+        sender.sendMessage("§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)");
         sender.sendMessage("§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money");
+        sender.sendMessage("§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)");
+        sender.sendMessage("§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)");
     }
     
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setlevel", "addxp", "economy").stream()
+            return Arrays.asList("reload", "setlevel", "addxp", "economy", "refreshjobs", "invalidatejobs").stream()
                 .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                 .collect(Collectors.toList());
         }
-        
-        if (args.length == 2 && args[0].equalsIgnoreCase("economy")) {
-            return Arrays.asList("give", "take", "set").stream()
-                .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
-                .collect(Collectors.toList());
+
+        if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("economy")) {
+                return Arrays.asList("give", "take", "set").stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            if (args[0].equalsIgnoreCase("refreshjobs") || args[0].equalsIgnoreCase("invalidatejobs")
+                    || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
+                return Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
         }
-        
+
+        if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
+                return JobNameUtil.suggestJobs(plugin.getJobManager().getJobs().keySet(), args[2]);
+            }
+            if (args[0].equalsIgnoreCase("economy")) {
+                return Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+
         return new ArrayList<>();
+    }
+
+    private void handleRefreshJobs(CommandSender sender, String playerName, String prefix) {
+        PlayerResolution resolution = resolvePlayer(playerName);
+        if (!resolution.isValid()) {
+            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            return;
+        }
+        if (!resolution.isOnline) {
+            sender.sendMessage(prefix + "§cPlayer must be online to refresh job data!");
+            return;
+        }
+        plugin.getJobManager().refreshPlayerData(resolution.onlinePlayer);
+        sender.sendMessage(prefix + "§aRefreshed job data for " + resolution.getName());
+    }
+
+    private void handleInvalidateJobs(CommandSender sender, String playerName, String prefix) {
+        PlayerResolution resolution = resolvePlayer(playerName);
+        if (!resolution.isValid()) {
+            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            return;
+        }
+        if (!resolution.isOnline) {
+            sender.sendMessage(prefix + "§cPlayer must be online to invalidate cached job data!");
+            return;
+        }
+        plugin.getJobManager().invalidatePlayerData(resolution.onlinePlayer);
+        sender.sendMessage(prefix + "§aInvalidated cached job data for " + resolution.getName());
     }
 }

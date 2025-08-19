@@ -1,5 +1,21 @@
 # Dynamic Jobs & Economy Pro - Changelog
 
+## Version 1.0.2 - "Admin UX + Tests" (August 2025)
+
+### ✨ Improvements
+- Added `JobNameUtil` for consistent case-insensitive job handling and suggestions
+- `JobManager.getJob()` now delegates to `JobNameUtil` for cleaner lookup
+- Improved admin tab completion for `/djeconomy setlevel|addxp` using canonical job suggestions
+
+### 🧪 Testing
+- Added `JobNameUtilTest` (JUnit 5) covering case-insensitive lookup and suggestions
+
+### 📚 Docs & CI
+- Admin command docs already reflect case-insensitive usage
+- CI continues to run unit tests on PRs and pushes
+
+---
+
 ## Version 1.0.1 - "Polish & Security Update" (January 2025)
 
 ### 🛡️ **Security Enhancements**

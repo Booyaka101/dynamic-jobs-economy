@@ -1,5 +1,7 @@
 # Dynamic Jobs & Economy Pro
 
+[![Build DynamicJobsEconomy](https://github.com/Booyaka101/dynamic-jobs-economy/actions/workflows/build.yml/badge.svg)](https://github.com/Booyaka101/dynamic-jobs-economy/actions/workflows/build.yml)
+
 A Minecraft economy plugin that actually makes sense. Jobs, gigs, and businesses all in one.
 
 ## What it does
@@ -29,8 +31,15 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 
 **For admins:**
 - `/djeconomy reload` - Reload config
-- `/djeconomy give <player> <amount>` - Give money
-- `/djeconomy reset <player>` - Reset someone's data
+- `/djeconomy economy <give|take|set> <player> <amount>` - Manage player money
+- `/djeconomy setlevel <player> <job> <level>` - Set a player's job level (supports offline). Job name is case-insensitive.
+- `/djeconomy addxp <player> <job> <amount>` - Add XP to a player's job (online only; player must have joined the job). Job name is case-insensitive.
+- `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
+- `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
+
+### Tab Completion
+
+- Admin command tab completion is case-insensitive for both player names and job names.
 
 That's it. Everything else is pretty self-explanatory.
 
@@ -48,8 +57,9 @@ Everything has sensible defaults, so you probably don't need to touch anything.
 ## Building
 
 If you want to build from source:
+CI builds the project and runs tests automatically. If you build locally, use:
 ```bash
-mvn clean package
+mvn -B package
 ```
 
 ## Questions?

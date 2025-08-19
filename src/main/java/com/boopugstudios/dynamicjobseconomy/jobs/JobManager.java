@@ -1,8 +1,10 @@
 package com.boopugstudios.dynamicjobseconomy.jobs;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.util.JobNameUtil;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -197,21 +199,20 @@ public class JobManager {
     }
     
     public PlayerJobData getPlayerData(Player player) {
-        return playerData.computeIfAbsent(player.getUniqueId(), uuid -> {
-            PlayerJobData data = new PlayerJobData(uuid);
-            loadPlayerJobData(player);
-            return data;
-        });
+        PlayerJobData data = playerData.computeIfAbsent(player.getUniqueId(), PlayerJobData::new);
+        if (!data.isLoaded()) {
+            loadPlayerJobData(player, data);
+        }
+        return data;
     }
     
-    private void loadPlayerJobData(Player player) {
+    private void loadPlayerJobData(Player player, PlayerJobData data) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
             String sql = "SELECT job_name, level, experience FROM job_levels WHERE player_uuid = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, player.getUniqueId().toString());
                 
                 try (ResultSet rs = stmt.executeQuery()) {
-                    PlayerJobData data = playerData.get(player.getUniqueId());
                     while (rs.next()) {
                         String jobName = rs.getString("job_name");
                         int level = rs.getInt("level");
@@ -222,6 +223,7 @@ public class JobManager {
                         data.getJobLevel(jobName).setExperience(experience);
                     }
                 }
+                data.setLoaded(true);
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error loading player job data for " + player.getName(), e);
@@ -235,7 +237,21 @@ public class JobManager {
         JobLevel jobLevel = data.getJobLevel(jobName);
         
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-            String sql = """
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+
+            // Ensure the player exists in players table to satisfy FK constraint on job_levels
+            String ensurePlayerSql = isSQLite
+                ? "INSERT OR IGNORE INTO players (uuid, username) VALUES (?, ?)"
+                : "INSERT IGNORE INTO players (uuid, username) VALUES (?, ?)";
+            try (PreparedStatement ensureStmt = conn.prepareStatement(ensurePlayerSql)) {
+                ensureStmt.setString(1, player.getUniqueId().toString());
+                ensureStmt.setString(2, player.getName());
+                ensureStmt.executeUpdate();
+            }
+            String sql = isSQLite
+                ? "INSERT INTO job_levels (player_uuid, job_name, level, experience) VALUES (?, ?, ?, ?) " +
+                  "ON CONFLICT(player_uuid, job_name) DO UPDATE SET level = ?, experience = ?"
+                : """
                 INSERT INTO job_levels (player_uuid, job_name, level, experience) 
                 VALUES (?, ?, ?, ?) 
                 ON DUPLICATE KEY UPDATE level = ?, experience = ?
@@ -308,8 +324,76 @@ public class JobManager {
     public Map<String, Job> getJobs() {
         return new HashMap<>(jobs);
     }
-    
-    public Job getJob(String name) {
-        return jobs.get(name);
+
+public Job getJob(String name) {
+    return JobNameUtil.findJobIgnoreCase(jobs, name);
+}
+
+    public boolean setJobLevel(Player player, String jobName, int level) {
+        Job job = getJob(jobName);
+        if (job == null) return false;
+        if (level < 1) level = 1;
+        if (level > job.getMaxLevel()) level = job.getMaxLevel();
+
+        PlayerJobData data = getPlayerData(player);
+        String canonical = job.getName();
+        if (!data.hasJob(canonical)) {
+            data.addJob(canonical);
+        }
+        JobLevel jl = data.getJobLevel(canonical);
+        jl.setLevel(level);
+        jl.setExperience(0); // reset XP to avoid unintended level-ups
+        savePlayerJobData(player, canonical);
+        return true;
+    }
+
+    public boolean setOfflineJobLevel(OfflinePlayer offlinePlayer, String jobName, int level) {
+        Job job = getJob(jobName);
+        if (job == null) return false;
+        if (level < 1) level = 1;
+        if (level > job.getMaxLevel()) level = job.getMaxLevel();
+
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            boolean isSQLite = "sqlite".equalsIgnoreCase(plugin.getDatabaseManager().getDatabaseType());
+
+            // Ensure player exists in players table to satisfy FK
+            String ensurePlayerSql = isSQLite
+                ? "INSERT OR IGNORE INTO players (uuid, username) VALUES (?, ?)"
+                : "INSERT IGNORE INTO players (uuid, username) VALUES (?, ?)";
+            try (PreparedStatement ensureStmt = conn.prepareStatement(ensurePlayerSql)) {
+                ensureStmt.setString(1, offlinePlayer.getUniqueId().toString());
+                ensureStmt.setString(2, offlinePlayer.getName() != null ? offlinePlayer.getName() : offlinePlayer.getUniqueId().toString());
+                ensureStmt.executeUpdate();
+            }
+
+            // Upsert job level; keep existing experience if row exists
+            String sql = isSQLite
+                ? "INSERT INTO job_levels (player_uuid, job_name, level, experience) VALUES (?, ?, ?, 0) " +
+                  "ON CONFLICT(player_uuid, job_name) DO UPDATE SET level = excluded.level"
+                : "INSERT INTO job_levels (player_uuid, job_name, level, experience) VALUES (?, ?, ?, 0) " +
+                  "ON DUPLICATE KEY UPDATE level = VALUES(level)";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, offlinePlayer.getUniqueId().toString());
+                stmt.setString(2, job.getName());
+                stmt.setInt(3, level);
+                stmt.executeUpdate();
+            }
+            return true;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error setting offline job level for " + offlinePlayer.getUniqueId() + ", job=" + job.getName(), e);
+            return false;
+        }
+    }
+
+    public void invalidatePlayerData(Player player) {
+        PlayerJobData data = playerData.computeIfAbsent(player.getUniqueId(), PlayerJobData::new);
+        data.setLoaded(false);
+    }
+
+    public void refreshPlayerData(Player player) {
+        PlayerJobData data = playerData.computeIfAbsent(player.getUniqueId(), PlayerJobData::new);
+        data.setLoaded(false);
+        loadPlayerJobData(player, data);
     }
 }

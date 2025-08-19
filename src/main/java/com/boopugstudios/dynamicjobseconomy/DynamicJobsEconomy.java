@@ -174,17 +174,23 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     }
     
     private void registerCommands() {
+        // Create single instances so executor and tab completer share state
+        JobsCommand jobsCmd = new JobsCommand(this);
+        ConsolidatedBusinessCommand bizCmd = new ConsolidatedBusinessCommand(this);
+        GigsCommand gigsCmd = new GigsCommand(this);
+        AdminCommand adminCmd = new AdminCommand(this);
+
         // Register main commands
-        getCommand("jobs").setExecutor(new JobsCommand(this));
-        getCommand("business").setExecutor(new ConsolidatedBusinessCommand(this));
-        getCommand("gigs").setExecutor(new GigsCommand(this));
-        getCommand("djeconomy").setExecutor(new AdminCommand(this));
-        
+        getCommand("jobs").setExecutor(jobsCmd);
+        getCommand("business").setExecutor(bizCmd);
+        getCommand("gigs").setExecutor(gigsCmd);
+        getCommand("djeconomy").setExecutor(adminCmd);
+
         // Set tab completers
-        getCommand("jobs").setTabCompleter(new JobsCommand(this));
-        getCommand("business").setTabCompleter(new ConsolidatedBusinessCommand(this));
-        getCommand("gigs").setTabCompleter(new GigsCommand(this));
-        getCommand("djeconomy").setTabCompleter(new AdminCommand(this));
+        getCommand("jobs").setTabCompleter(jobsCmd);
+        getCommand("business").setTabCompleter(bizCmd);
+        getCommand("gigs").setTabCompleter(gigsCmd);
+        getCommand("djeconomy").setTabCompleter(adminCmd);
     }
     
     private void registerListeners() {
