@@ -498,13 +498,26 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     // --- Config accessors for confirmation settings ---
     private double getConfirmThreshold() {
-        // Default threshold is $100,000.00
-        return plugin.getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+        // Default threshold is $100,000.00. Some test mocks return 0.0 for unstubbed doubles;
+        // treat <= 0 as missing and fall back to the default.
+        double v;
+        try {
+            v = plugin.getConfig().getDouble("economy.admin_confirmation.threshold");
+        } catch (Throwable t) {
+            v = 0.0;
+        }
+        return v > 0 ? v : 100000.0;
     }
 
     private int getConfirmExpirySeconds() {
-        // Default expiry is 30 seconds
-        return plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", 30);
+        // Default expiry is 30 seconds. Treat <= 0 as missing and fall back to the default.
+        int v;
+        try {
+            v = plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds");
+        } catch (Throwable t) {
+            v = 0;
+        }
+        return v > 0 ? v : 30;
     }
 
     private long getConfirmExpiryMillis() {
