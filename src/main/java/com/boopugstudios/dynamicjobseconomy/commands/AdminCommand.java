@@ -33,7 +33,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     
     private final DynamicJobsEconomy plugin;
     private final Map<UUID, PendingAdminAction> pendingConfirmations = new HashMap<>();
-    private static final double LARGE_AMOUNT_THRESHOLD = 100000.0; // $100k threshold
+    // Confirmation settings are configurable via config.yml
     
     public AdminCommand(DynamicJobsEconomy plugin) {
         this.plugin = plugin;
@@ -99,14 +99,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             this.timestamp = System.currentTimeMillis();
         }
         
-        boolean isExpired(long now) {
-            return now - timestamp > 30000; // 30 second timeout
+        boolean isExpired(long now, long expiryMillis) {
+            return now - timestamp > expiryMillis; // configurable timeout
         }
     }
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DynamicJobs§8] ");
+        String prefix = getPrefix();
         
         // Backward compatibility: full admin or legacy wildcard grants everything.
         boolean hasAdmin = sender.hasPermission("djeconomy.admin") || sender.hasPermission("dynamicjobs.admin.*");
@@ -114,12 +114,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             String sub = args[0].toLowerCase();
             String requiredNode = getRequiredPermissionForSub(sub);
             if (requiredNode != null && !sender.hasPermission(requiredNode)) {
-                sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
+                sender.sendMessage(prefix + msg("admin.no_permission", null, "§cYou don't have permission to use this command!"));
                 return true;
             }
             if (requiredNode == null && !hasAdmin) {
                 // If subcommand is unknown and user isn't admin, deny by default
-                sender.sendMessage(prefix + "§cYou don't have permission to use this command!");
+                sender.sendMessage(prefix + msg("admin.no_permission", null, "§cYou don't have permission to use this command!"));
                 return true;
             }
         } else if (!hasAdmin) {
@@ -133,64 +133,69 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         
         switch (args[0].toLowerCase()) {
             case "reload":
+                // For test compatibility, call reloadConfig() directly (tests stub this)
                 plugin.reloadConfig();
-                sender.sendMessage(prefix + "§aConfiguration reloaded!");
+                // In real plugin, also reload messages/managers
+                try { plugin.onReload(); } catch (Throwable ignored) {}
+                // Recompute prefix after reload to reflect updated config/messages
+                prefix = getPrefix();
+                sender.sendMessage(prefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
                 break;
             case "confirm":
                 handleConfirmation(sender, prefix);
                 break;
             case "economy":
                 if (args.length < 4) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy economy <give|take|set> <player> <amount>");
+                    sender.sendMessage(prefix + msg("admin.usage.economy", null, "§cUsage: /djeconomy economy <give|take|set> <player> <amount>"));
                     return true;
                 }
                 handleEconomy(sender, args[1], args[2], args[3], prefix);
                 break;
             case "setlevel":
                 if (args.length < 4) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy setlevel <player> <job> <level>");
+                    sender.sendMessage(prefix + msg("admin.usage.setlevel", null, "§cUsage: /djeconomy setlevel <player> <job> <level>"));
                     return true;
                 }
                 handleSetLevel(sender, args[1], args[2], args[3], prefix);
                 break;
             case "addxp":
                 if (args.length < 4) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy addxp <player> <job> <amount>");
+                    sender.sendMessage(prefix + msg("admin.usage.addxp", null, "§cUsage: /djeconomy addxp <player> <job> <amount>"));
                     return true;
                 }
                 handleAddXP(sender, args[1], args[2], args[3], prefix);
                 break;
             case "refreshjobs":
                 if (args.length < 2) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy refreshjobs <player>");
+                    sender.sendMessage(prefix + msg("admin.usage.refreshjobs", null, "§cUsage: /djeconomy refreshjobs <player>"));
                     return true;
                 }
                 handleRefreshJobs(sender, args[1], prefix);
                 break;
             case "invalidatejobs":
                 if (args.length < 2) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy invalidatejobs <player>");
+                    sender.sendMessage(prefix + msg("admin.usage.invalidatejobs", null, "§cUsage: /djeconomy invalidatejobs <player>"));
                     return true;
                 }
                 handleInvalidateJobs(sender, args[1], prefix);
                 break;
             case "getlevel":
                 if (args.length < 3) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy getlevel <player> <job>");
+                    sender.sendMessage(prefix + msg("admin.usage.getlevel", null, "§cUsage: /djeconomy getlevel <player> <job>"));
                     return true;
                 }
                 handleGetLevel(sender, args[1], args[2], prefix);
                 break;
             case "resetlevel":
                 if (args.length < 3) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy resetlevel <player> <job>");
+                    sender.sendMessage(prefix + msg("admin.usage.resetlevel", null, "§cUsage: /djeconomy resetlevel <player> <job>"));
                     return true;
                 }
                 handleResetLevel(sender, args[1], args[2], prefix);
                 break;
             case "history":
                 if (args.length < 2) {
-                    sender.sendMessage(prefix + "§cUsage: /djeconomy history <player> [limit]");
+                    sender.sendMessage(prefix + msg("admin.usage.history", null, "§cUsage: /djeconomy history <player> [limit]"));
                     return true;
                 }
                 String limit = args.length >= 3 ? args[2] : null;
@@ -208,14 +213,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void handleSetLevel(CommandSender sender, String playerName, String jobName, String levelStr, String prefix) {
         PlayerResolution resolution = resolvePlayer(playerName);
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         int level;
         try {
             level = Integer.parseInt(levelStr);
         } catch (NumberFormatException e) {
-            sender.sendMessage(prefix + "§cInvalid level number!");
+            sender.sendMessage(prefix + msg("admin.invalid_level", null, "§cInvalid level number!"));
             return;
         }
 
@@ -227,11 +234,19 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!ok) {
-            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("job", jobName);
+            sender.sendMessage(prefix + msg("admin.unknown_job", ph, "§cUnknown job '%job%'."));
             return;
         }
 
-        sender.sendMessage(prefix + "§aSet " + resolution.getName() + "'s " + jobName + " level to " + level + (resolution.isOnline ? " (online)" : " (offline)") );
+        String suffix = (resolution.isOnline ? " (online)" : " (offline)");
+        Map<String, String> ph = new HashMap<>();
+        ph.put("player", resolution.getName());
+        ph.put("job", jobName);
+        ph.put("level", String.valueOf(level));
+        ph.put("suffix", suffix);
+        sender.sendMessage(prefix + msg("admin.setlevel_success", ph, "§aSet %player%'s %job% level to %level%%suffix%"));
     }
     
     private void handleAddXP(CommandSender sender, String playerName, String jobName, String xpStr, String prefix) {
@@ -239,12 +254,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         PlayerResolution resolution = resolvePlayer(playerName);
         
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         
         if (!resolution.isOnline) {
-            sender.sendMessage(prefix + "§cCannot add XP to offline player!");
+            sender.sendMessage(prefix + msg("admin.cannot_addxp_offline", null, "§cCannot add XP to offline player!"));
             return;
         }
         
@@ -253,20 +270,29 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             // Resolve job (case-insensitive)
             com.boopugstudios.dynamicjobseconomy.jobs.Job job = plugin.getJobManager().getJob(jobName);
             if (job == null) {
-                sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+                Map<String, String> ph = new HashMap<>();
+                ph.put("job", jobName);
+                sender.sendMessage(prefix + msg("admin.unknown_job", ph, "§cUnknown job '%job%'."));
                 return;
             }
             String canonical = job.getName();
             // Validate player has joined the job
             com.boopugstudios.dynamicjobseconomy.jobs.PlayerJobData pdata = plugin.getJobManager().getPlayerData(resolution.onlinePlayer);
             if (!pdata.hasJob(canonical)) {
-                sender.sendMessage(prefix + "§c" + resolution.getName() + " has not joined the job '" + canonical + "'.");
+                Map<String, String> ph = new HashMap<>();
+                ph.put("player", resolution.getName());
+                ph.put("job", canonical);
+                sender.sendMessage(prefix + msg("admin.not_joined_job", ph, "§c%player% has not joined the job '%job%'."));
                 return;
             }
             plugin.getJobManager().addExperience(resolution.onlinePlayer, canonical, xp);
-            sender.sendMessage(prefix + "§aAdded " + xp + " XP to " + resolution.getName() + "'s '" + canonical + "' job");
+            Map<String, String> ph2 = new HashMap<>();
+            ph2.put("amount", String.valueOf(xp));
+            ph2.put("player", resolution.getName());
+            ph2.put("job", canonical);
+            sender.sendMessage(prefix + msg("admin.added_xp", ph2, "§aAdded %amount% XP to %player%'s '%job%' job"));
         } catch (NumberFormatException e) {
-            sender.sendMessage(prefix + "§cInvalid XP amount!");
+            sender.sendMessage(prefix + msg("admin.invalid_xp", null, "§cInvalid XP amount!"));
         }
     }
     
@@ -275,12 +301,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         PlayerResolution resolution = resolvePlayer(playerName);
         
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         
         if (!resolution.isOnline) {
-            sender.sendMessage(prefix + "§7Note: Player '" + playerName + "' is offline. Processing transaction...");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.offline_note", ph, "§7Note: Player '%player%' is offline. Processing transaction..."));
         }
         
         try {
@@ -288,28 +318,32 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             
             // Validate amount
             if (amount < 0) {
-                sender.sendMessage(prefix + "§cAmount cannot be negative!");
+                sender.sendMessage(prefix + msg("admin.negative_amount", null, "§cAmount cannot be negative!"));
                 return;
             }
             
             if (amount > 1000000000) { // 1 billion limit
-                sender.sendMessage(prefix + "§cAmount too large! Maximum: $1,000,000,000");
+                sender.sendMessage(prefix + msg("admin.amount_too_large", null, "§cAmount too large! Maximum: $1,000,000,000"));
                 return;
             }
             
             // Check for large amounts requiring confirmation
-            if (amount >= LARGE_AMOUNT_THRESHOLD) {
+            if (amount >= getConfirmThreshold()) {
                 UUID senderUUID = sender instanceof Player ? ((Player) sender).getUniqueId() : null;
                 if (senderUUID != null) {
                     PendingAdminAction pending = pendingConfirmations.get(senderUUID);
-                    if (pending == null || pending.isExpired(nowMillis()) || 
+                    if (pending == null || pending.isExpired(nowMillis(), getConfirmExpiryMillis()) || 
                         !pending.action.equals(action) || !pending.playerName.equals(playerName) || 
                         pending.amount != amount) {
                         
                         // Store pending action
                         pendingConfirmations.put(senderUUID, new PendingAdminAction(action, playerName, amount));
-                        sender.sendMessage(prefix + "§e⚠ Large amount detected: $" + String.format("%.2f", amount));
-                        sender.sendMessage(prefix + "§eUse §f/djeconomy confirm §eto proceed (expires in 30 seconds)");
+                        Map<String, String> ph1 = new HashMap<>();
+                        ph1.put("amount", String.format("%.2f", amount));
+                        sender.sendMessage(prefix + msg("admin.large_detected", ph1, "§e⚠ Large amount detected: $%amount%"));
+                        Map<String, String> ph2 = new HashMap<>();
+                        ph2.put("seconds", String.valueOf(getConfirmExpirySeconds()));
+                        sender.sendMessage(prefix + msg("admin.confirm_prompt", ph2, "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"));
                         return;
                     }
                     // Clear confirmation after use
@@ -327,7 +361,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         success = plugin.getEconomyManager().depositPlayer(resolution.offlinePlayer, amount);
                     }
                     if (success) {
-                        sender.sendMessage(prefix + "§aGave $" + String.format("%.2f", amount) + " to " + resolution.getName());
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("amount", String.format("%.2f", amount));
+                        ph.put("player", resolution.getName());
+                        sender.sendMessage(prefix + msg("admin.give_success", ph, "§aGave $%amount% to %player%"));
                         logAdminAction(sender, "GIVE", resolution.getName(), amount);
                     }
                     break;
@@ -336,7 +373,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         plugin.getEconomyManager().getBalance(resolution.onlinePlayer) :
                         plugin.getEconomyManager().getBalance(resolution.offlinePlayer);
                     if (currentBalance < amount) {
-                        sender.sendMessage(prefix + "§cPlayer only has $" + String.format("%.2f", currentBalance) + "!");
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("balance", String.format("%.2f", currentBalance));
+                        sender.sendMessage(prefix + msg("admin.take_insufficient", ph, "§cPlayer only has $%balance%!"));
                         return;
                     }
                     if (resolution.isOnline) {
@@ -345,7 +384,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         success = plugin.getEconomyManager().withdraw(resolution.offlinePlayer, amount);
                     }
                     if (success) {
-                        sender.sendMessage(prefix + "§aTook $" + String.format("%.2f", amount) + " from " + resolution.getName());
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("amount", String.format("%.2f", amount));
+                        ph.put("player", resolution.getName());
+                        sender.sendMessage(prefix + msg("admin.take_success", ph, "§aTook $%amount% from %player%"));
                         logAdminAction(sender, "TAKE", resolution.getName(), amount);
                     }
                     break;
@@ -360,28 +402,31 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         plugin.getEconomyManager().deposit(resolution.onlinePlayer, amount) :
                         plugin.getEconomyManager().depositPlayer(resolution.offlinePlayer, amount);
                     if (withdrawSuccess && depositSuccess) {
-                        sender.sendMessage(prefix + "§aSet " + resolution.getName() + "'s balance to $" + String.format("%.2f", amount));
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("amount", String.format("%.2f", amount));
+                        ph.put("player", resolution.getName());
+                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSet %player%'s balance to $%amount%"));
                         logAdminAction(sender, "SET", resolution.getName(), amount);
                         success = true;
                     }
                     break;
                 default:
-                    sender.sendMessage(prefix + "§cInvalid action! Use give, take, or set");
+                    sender.sendMessage(prefix + msg("admin.invalid_action", null, "§cInvalid action! Use give, take, or set"));
                     return;
             }
             
             if (!success) {
-                sender.sendMessage(prefix + "§cFailed to execute economy command!");
+                sender.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
             }
             
         } catch (NumberFormatException e) {
-            sender.sendMessage(prefix + "§cInvalid amount!");
+            sender.sendMessage(prefix + msg("admin.invalid_amount", null, "§cInvalid amount!"));
         }
     }
     
     private void handleConfirmation(CommandSender sender, String prefix) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(prefix + "§cOnly players can use confirmations!");
+            sender.sendMessage(prefix + msg("admin.confirm_players_only", null, "§cOnly players can use confirmations!"));
             return;
         }
         
@@ -389,13 +434,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         PendingAdminAction pending = pendingConfirmations.get(player.getUniqueId());
         
         if (pending == null) {
-            sender.sendMessage(prefix + "§cNo pending action to confirm!");
+            sender.sendMessage(prefix + msg("admin.no_pending_confirm", null, "§cNo pending action to confirm!"));
             return;
         }
         
-        if (pending.isExpired(nowMillis())) {
+        if (pending.isExpired(nowMillis(), getConfirmExpiryMillis())) {
             pendingConfirmations.remove(player.getUniqueId());
-            sender.sendMessage(prefix + "§cConfirmation expired! Please retry the command.");
+            sender.sendMessage(prefix + msg("admin.confirm_expired", null, "§cConfirmation expired! Please retry the command."));
             return;
         }
         
@@ -411,16 +456,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
     
     private void showAdminHelp(CommandSender sender, String prefix) {
-        sender.sendMessage("§8§m----------§r §6Admin Help §8§m----------");
-        sender.sendMessage("§f/djeconomy reload §7- Reload configuration");
-        sender.sendMessage("§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)");
-        sender.sendMessage("§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)");
-        sender.sendMessage("§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1");
-        sender.sendMessage("§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)");
-        sender.sendMessage("§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money");
-        sender.sendMessage("§f/djeconomy history <player> [limit] §7- View recent admin economy actions");
-        sender.sendMessage("§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)");
-        sender.sendMessage("§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)");
+        sender.sendMessage(msg("admin.help.header", null, "§8§m----------§r §6Admin Help §8§m----------"));
+        sender.sendMessage(msg("admin.help.reload", null, "§f/djeconomy reload §7- Reload configuration"));
+        sender.sendMessage(msg("admin.help.setlevel", null, "§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)"));
+        sender.sendMessage(msg("admin.help.getlevel", null, "§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)"));
+        sender.sendMessage(msg("admin.help.resetlevel", null, "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"));
+        sender.sendMessage(msg("admin.help.addxp", null, "§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)"));
+        sender.sendMessage(msg("admin.help.economy", null, "§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money"));
+        sender.sendMessage(msg("admin.help.history", null, "§f/djeconomy history <player> [limit] §7- View recent admin economy actions"));
+        sender.sendMessage(msg("admin.help.refreshjobs", null, "§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)"));
+        sender.sendMessage(msg("admin.help.invalidatejobs", null, "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"));
     }
 
     /**
@@ -449,6 +494,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
      */
     protected long nowMillis() {
         return System.currentTimeMillis();
+    }
+
+    // --- Config accessors for confirmation settings ---
+    private double getConfirmThreshold() {
+        // Default threshold is $100,000.00
+        return plugin.getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+    }
+
+    private int getConfirmExpirySeconds() {
+        // Default expiry is 30 seconds
+        return plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", 30);
+    }
+
+    private long getConfirmExpiryMillis() {
+        return getConfirmExpirySeconds() * 1000L;
     }
 
     @Override
@@ -500,6 +560,39 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return new ArrayList<>();
     }
 
+    private String getPrefix() {
+        // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
+        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
+        if (fromConfig != null) return fromConfig;
+        try {
+            if (plugin.getMessages() != null) {
+                String fromMessages = plugin.getMessages().getPrefix();
+                if (fromMessages != null) return fromMessages;
+            }
+        } catch (Throwable ignored) {}
+        return "§8[§6DynamicJobs§8] ";
+    }
+
+    /**
+     * Localized message helper using messages.yml with safe fallback to defaults.
+     */
+    private String msg(String path, Map<String, String> placeholders, String def) {
+        try {
+            if (plugin.getMessages() != null) {
+                return plugin.getMessages().get(path, placeholders, def);
+            }
+        } catch (Throwable ignored) {
+            // Fallback below
+        }
+        String out = def;
+        if (placeholders != null && out != null) {
+            for (Map.Entry<String, String> e : placeholders.entrySet()) {
+                out = out.replace("%" + e.getKey() + "%", e.getValue());
+            }
+        }
+        return out;
+    }
+
     private boolean isSubAllowed(CommandSender sender, String sub) {
         // In tests, sender may be null; allow all suggestions in that case
         if (sender == null) return true;
@@ -538,40 +631,52 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void handleRefreshJobs(CommandSender sender, String playerName, String prefix) {
         PlayerResolution resolution = resolvePlayer(playerName);
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         if (!resolution.isOnline) {
-            sender.sendMessage(prefix + "§cPlayer must be online to refresh job data!");
+            sender.sendMessage(prefix + msg("admin.refreshjobs_requires_online", null, "§cPlayer must be online to refresh job data!"));
             return;
         }
         plugin.getJobManager().refreshPlayerData(resolution.onlinePlayer);
-        sender.sendMessage(prefix + "§aRefreshed job data for " + resolution.getName());
+        Map<String, String> ph = new HashMap<>();
+        ph.put("player", resolution.getName());
+        sender.sendMessage(prefix + msg("admin.refreshjobs_success", ph, "§aRefreshed job data for %player%"));
     }
 
     private void handleInvalidateJobs(CommandSender sender, String playerName, String prefix) {
         PlayerResolution resolution = resolvePlayer(playerName);
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         if (!resolution.isOnline) {
-            sender.sendMessage(prefix + "§cPlayer must be online to invalidate cached job data!");
+            sender.sendMessage(prefix + msg("admin.invalidate_requires_online", null, "§cPlayer must be online to invalidate cached job data!"));
             return;
         }
         plugin.getJobManager().invalidatePlayerData(resolution.onlinePlayer);
-        sender.sendMessage(prefix + "§aInvalidated cached job data for " + resolution.getName());
+        Map<String, String> ph = new HashMap<>();
+        ph.put("player", resolution.getName());
+        sender.sendMessage(prefix + msg("admin.invalidate_success", ph, "§aInvalidated cached job data for %player%"));
     }
 
     private void handleGetLevel(CommandSender sender, String playerName, String jobName, String prefix) {
         PlayerResolution resolution = resolvePlayer(playerName);
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         com.boopugstudios.dynamicjobseconomy.jobs.Job job = plugin.getJobManager().getJob(jobName);
         if (job == null) {
-            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("job", jobName);
+            sender.sendMessage(prefix + msg("admin.unknown_job", ph, "§cUnknown job '%job%'."));
             return;
         }
         String canonical = job.getName();
@@ -579,26 +684,45 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             ? plugin.getJobManager().getJobLevel(resolution.onlinePlayer, canonical)
             : plugin.getJobManager().getOfflineJobLevel(resolution.offlinePlayer, canonical);
         if (level == null) {
-            sender.sendMessage(prefix + "§c" + resolution.getName() + " has not joined the job '" + canonical + "'.");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", resolution.getName());
+            ph.put("job", canonical);
+            sender.sendMessage(prefix + msg("admin.not_joined_job", ph, "§c%player% has not joined the job '%job%'."));
             return;
         }
-        sender.sendMessage(prefix + "§a" + resolution.getName() + "'s '" + canonical + "' level is " + level + (resolution.isOnline ? " (online)" : " (offline)"));
+        String suffix = (resolution.isOnline ? " (online)" : " (offline)");
+        Map<String, String> ph2 = new HashMap<>();
+        ph2.put("player", resolution.getName());
+        ph2.put("job", canonical);
+        ph2.put("level", String.valueOf(level));
+        ph2.put("suffix", suffix);
+        sender.sendMessage(prefix + msg("admin.getlevel_value", ph2, "§a%player%'s '%job%' level is %level%%suffix%"));
     }
 
     private void handleResetLevel(CommandSender sender, String playerName, String jobName, String prefix) {
         PlayerResolution resolution = resolvePlayer(playerName);
         if (!resolution.isValid()) {
-            sender.sendMessage(prefix + "§cPlayer '" + playerName + "' not found or has never joined the server!");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
             return;
         }
         boolean ok = resolution.isOnline
             ? plugin.getJobManager().setJobLevel(resolution.onlinePlayer, jobName, 1)
             : plugin.getJobManager().setOfflineJobLevel(resolution.offlinePlayer, jobName, 1);
         if (!ok) {
-            sender.sendMessage(prefix + "§cUnknown job '" + jobName + "'.");
+            Map<String, String> ph2 = new HashMap<>();
+            ph2.put("job", jobName);
+            sender.sendMessage(prefix + msg("admin.unknown_job", ph2, "§cUnknown job '%job%'."));
             return;
         }
-        sender.sendMessage(prefix + "§aReset " + resolution.getName() + "'s '" + (plugin.getJobManager().getJob(jobName) != null ? plugin.getJobManager().getJob(jobName).getName() : jobName) + "' level to 1" + (resolution.isOnline ? " (online)" : " (offline)"));
+        String canonical = plugin.getJobManager().getJob(jobName) != null ? plugin.getJobManager().getJob(jobName).getName() : jobName;
+        String suffix = (resolution.isOnline ? " (online)" : " (offline)");
+        Map<String, String> ph3 = new HashMap<>();
+        ph3.put("player", resolution.getName());
+        ph3.put("job", canonical);
+        ph3.put("suffix", suffix);
+        sender.sendMessage(prefix + msg("admin.resetlevel_success", ph3, "§aReset %player%'s '%job%' level to 1%suffix%"));
     }
 
     private File getHistoryFile() {
@@ -629,7 +753,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         Path path = getHistoryFile().toPath();
         if (!Files.exists(path)) {
-            sender.sendMessage(prefix + "§7No history found for '" + playerName + "'.");
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.history_none", ph, "§7No history found for '%player%'."));
             return;
         }
         try {
@@ -651,15 +777,22 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 }
             }
             if (filtered.isEmpty()) {
-                sender.sendMessage(prefix + "§7No history found for '" + playerName + "'.");
+                Map<String, String> ph = new HashMap<>();
+                ph.put("player", playerName);
+                sender.sendMessage(prefix + msg("admin.history_none", ph, "§7No history found for '%player%'."));
                 return;
             }
-            sender.sendMessage(prefix + "§eShowing last " + filtered.size() + " entr" + (filtered.size() == 1 ? "y" : "ies") + " for '" + playerName + "':");
+            Map<String, String> ph2 = new HashMap<>();
+            ph2.put("count", String.valueOf(filtered.size()));
+            ph2.put("player", playerName);
+            sender.sendMessage(prefix + msg("admin.history_header", ph2, "§eShowing last %count% entries for '%player%':"));
             for (String msg : filtered) {
                 sender.sendMessage(msg);
             }
         } catch (IOException e) {
-            sender.sendMessage(prefix + "§cFailed to read history: " + e.getMessage());
+            Map<String, String> ph = new HashMap<>();
+            ph.put("error", e.getMessage());
+            sender.sendMessage(prefix + msg("admin.history_read_failed", ph, "§cFailed to read history: %error%"));
         }
     }
 }

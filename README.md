@@ -41,7 +41,7 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
 - `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
 
-Note: Large economy amounts (>= 100000) require confirmation within 30 seconds using `/djeconomy confirm`.
+Note: Large economy amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`. Configure via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml` and apply changes with `/djeconomy reload`.
 
 ### Tab Completion
 

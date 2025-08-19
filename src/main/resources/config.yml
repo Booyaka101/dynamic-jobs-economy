@@ -98,6 +98,12 @@ economy:
   # Maximum money a player can hold
   max_money: 10000000
   
+  # Admin confirmation settings for large economy transactions
+  # Transactions at or above 'threshold' require a second '/djeconomy confirm' within 'expiry_seconds'.
+  admin_confirmation:
+    threshold: 100000.0       # Default: $100,000.00
+    expiry_seconds: 30        # Default: 30 seconds
+  
   # Tax settings
   taxes:
     enabled: true

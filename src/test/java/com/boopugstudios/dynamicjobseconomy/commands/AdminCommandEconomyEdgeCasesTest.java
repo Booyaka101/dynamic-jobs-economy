@@ -13,6 +13,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -90,6 +91,9 @@ class AdminCommandEconomyEdgeCasesTest {
         when(plugin.getConfig()).thenReturn(cfg);
         // Return the provided default prefix
         when(cfg.getString(eq("messages.prefix"), anyString())).thenAnswer(inv -> inv.getArgument(1));
+        // New configurable confirmation settings: make getters return their provided defaults unless overridden per test
+        when(cfg.getDouble(eq("economy.admin_confirmation.threshold"), anyDouble())).thenAnswer(inv -> inv.getArgument(1));
+        when(cfg.getInt(eq("economy.admin_confirmation.expiry_seconds"), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
         when(plugin.getEconomyManager()).thenReturn(econ);
         when(plugin.getDataFolder()).thenReturn(dataDir);
@@ -386,5 +390,85 @@ class AdminCommandEconomyEdgeCasesTest {
         assertTrue(out.list.stream().anyMatch(m -> m.toLowerCase().contains("expired")));
         // Still no economy action applied
         verify(econ, never()).deposit(any(Player.class), anyDouble());
+    }
+
+    @Test
+    void custom_threshold_and_expiry_are_applied() {
+        Players ppl = new Players();
+        EconomyManager econ = mock(EconomyManager.class);
+        when(econ.deposit(eq(ppl.online), eq(6000.0))).thenReturn(true);
+        DynamicJobsEconomy plugin = setupPlugin(econ, newTempDir());
+
+        // Override config values for this scenario
+        FileConfiguration cfg = plugin.getConfig();
+        when(cfg.getDouble(eq("economy.admin_confirmation.threshold"), anyDouble())).thenReturn(5000.0);
+        when(cfg.getInt(eq("economy.admin_confirmation.expiry_seconds"), anyInt())).thenReturn(5);
+
+        TestableAdminCommand admin = new TestableAdminCommand(plugin, ppl.byName, ppl.offlineArr);
+
+        MsgCollector out = new MsgCollector();
+        Player sender = out.asPlayerWithPerms();
+
+        // First attempt over threshold -> prompts with dynamic seconds
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"economy", "give", "Alice", "6000"}));
+        assertTrue(out.list.stream().anyMatch(m -> m.toLowerCase().contains("expires in 5 seconds")));
+        verify(econ, never()).deposit(any(Player.class), anyDouble());
+
+        out.list.clear();
+        // Confirm within expiry -> should apply
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"confirm"}));
+        assertTrue(out.list.stream().anyMatch(m -> m.contains("Gave $6,000.00") || m.contains("Gave $6000.00")));
+        verify(econ, times(1)).deposit(eq(ppl.online), eq(6000.0));
+    }
+
+    @Test
+    void reload_applies_new_threshold_and_expiry_settings() {
+        // Arrange two configs with different confirmation settings
+        FileConfiguration cfgOld = mock(FileConfiguration.class);
+        when(cfgOld.getString(eq("messages.prefix"), anyString())).thenReturn("[OLD] ");
+        when(cfgOld.getDouble(eq("economy.admin_confirmation.threshold"), anyDouble())).thenReturn(100000.0);
+        when(cfgOld.getInt(eq("economy.admin_confirmation.expiry_seconds"), anyInt())).thenReturn(30);
+
+        FileConfiguration cfgNew = mock(FileConfiguration.class);
+        when(cfgNew.getString(eq("messages.prefix"), anyString())).thenReturn("[NEW] ");
+        when(cfgNew.getDouble(eq("economy.admin_confirmation.threshold"), anyDouble())).thenReturn(3000.0);
+        when(cfgNew.getInt(eq("economy.admin_confirmation.expiry_seconds"), anyInt())).thenReturn(5);
+
+        DynamicJobsEconomy plugin = mock(DynamicJobsEconomy.class);
+        when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
+        AtomicBoolean reloaded = new AtomicBoolean(false);
+        when(plugin.getConfig()).thenAnswer(inv -> reloaded.get() ? cfgNew : cfgOld);
+        doAnswer(inv -> { reloaded.set(true); return null; }).when(plugin).reloadConfig();
+
+        EconomyManager econ = mock(EconomyManager.class);
+        when(plugin.getEconomyManager()).thenReturn(econ);
+
+        Players ppl = new Players();
+        when(econ.deposit(eq(ppl.online), anyDouble())).thenReturn(true);
+
+        TestableAdminCommand admin = new TestableAdminCommand(plugin, ppl.byName, ppl.offlineArr);
+        MsgCollector out = new MsgCollector();
+        Player sender = out.asPlayerWithPerms();
+
+        // Before reload: threshold high (100000) -> amount 5000 applies immediately, no confirmation
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"economy", "give", "Alice", "5000"}));
+        assertTrue(out.list.stream().anyMatch(m -> m.contains("Gave $5,000.00") || m.contains("Gave $5000.00")));
+        verify(econ, times(1)).deposit(eq(ppl.online), eq(5000.0));
+
+        out.list.clear();
+
+        // Reload config to switch to new settings (threshold 3000, expiry 5s)
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"reload"}));
+
+        out.list.clear();
+        // After reload: same amount now requires confirmation and mentions 5 seconds
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"economy", "give", "Alice", "5000"}));
+        assertTrue(out.list.stream().anyMatch(m -> m.toLowerCase().contains("expires in 5 seconds")));
+        verify(econ, times(1)).deposit(eq(ppl.online), anyDouble()); // still only the first deposit
+
+        out.list.clear();
+        // Confirm -> should apply the pending action
+        assertTrue(admin.onCommand(sender, mock(Command.class), "djeconomy", new String[]{"confirm"}));
+        verify(econ, times(2)).deposit(eq(ppl.online), anyDouble());
     }
 }

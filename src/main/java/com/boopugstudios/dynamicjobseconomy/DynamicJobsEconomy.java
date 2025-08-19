@@ -13,6 +13,7 @@ import com.boopugstudios.dynamicjobseconomy.notifications.NotificationManager;
 import com.boopugstudios.dynamicjobseconomy.listeners.PlayerListener;
 import com.boopugstudios.dynamicjobseconomy.listeners.JobListener;
 import com.boopugstudios.dynamicjobseconomy.listeners.BusinessListener;
+import com.boopugstudios.dynamicjobseconomy.i18n.Messages;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -33,6 +34,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     // New v1.0.2 managers
     private NotificationManager notificationManager;
     private AdminAuditLogger adminAuditLogger;
+    private Messages messages;
 
     @Override
     public void onEnable() {
@@ -43,6 +45,10 @@ public final class DynamicJobsEconomy extends JavaPlugin {
 
         // Save default config
         saveDefaultConfig();
+        
+        // Load messages.yml (i18n)
+        messages = new Messages(this);
+        messages.load();
         
         getLogger().info("\n" +
             "  ____              ____             ____  _             _ _           \n" +
@@ -263,9 +269,16 @@ public final class DynamicJobsEconomy extends JavaPlugin {
         return adminAuditLogger;
     }
     
+    public Messages getMessages() {
+        return messages;
+    }
+    
     // Utility methods
     public void reloadConfiguration() {
         reloadConfig();
+        if (messages != null) {
+            messages.load();
+        }
         
         // Reload managers
         if (jobManager != null) {
@@ -285,6 +298,9 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     
     public void onReload() {
         reloadConfig();
+        if (messages != null) {
+            messages.load();
+        }
         
         if (jobManager != null) {
             jobManager.reload();

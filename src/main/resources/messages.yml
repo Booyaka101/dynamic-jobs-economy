@@ -1,0 +1,72 @@
+# DynamicJobsEconomy - Messages (i18n-ready)
+# Use Minecraft color codes with § or use & which will be translated to § on load.
+
+messages:
+  prefix: "§8[§6DynamicJobs§8] "
+
+admin:
+  no_permission: "§cYou don't have permission to use this command!"
+  reload_success: "§aConfiguration reloaded!"
+
+  usage:
+    economy: "§cUsage: /djeconomy economy <give|take|set> <player> <amount>"
+    setlevel: "§cUsage: /djeconomy setlevel <player> <job> <level>"
+    addxp: "§cUsage: /djeconomy addxp <player> <job> <amount>"
+    refreshjobs: "§cUsage: /djeconomy refreshjobs <player>"
+    invalidatejobs: "§cUsage: /djeconomy invalidatejobs <player>"
+    getlevel: "§cUsage: /djeconomy getlevel <player> <job>"
+    resetlevel: "§cUsage: /djeconomy resetlevel <player> <job>"
+    history: "§cUsage: /djeconomy history <player> [limit]"
+
+  player_not_found: "§cPlayer '%player%' not found or has never joined the server!"
+  invalid_level: "§cInvalid level number!"
+  cannot_addxp_offline: "§cCannot add XP to offline player!"
+  invalid_xp: "§cInvalid XP amount!"
+  unknown_job: "§cUnknown job '%job%'."
+  not_joined_job: "§c%player% has not joined the job '%job%'."
+  added_xp: "§aAdded %amount% XP to %player%'s '%job%' job"
+
+  offline_note: "§7Note: Player '%player%' is offline. Processing transaction..."
+  negative_amount: "§cAmount cannot be negative!"
+  invalid_amount: "§cInvalid amount!"
+  amount_too_large: "§cAmount too large! Maximum: $1,000,000,000"
+
+  large_detected: "§e⚠ Large amount detected: $%amount%"
+  confirm_prompt: "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"
+
+  give_success: "§aGave $%amount% to %player%"
+  take_insufficient: "§cPlayer only has $%balance%!"
+  take_success: "§aTook $%amount% from %player%"
+  set_success: "§aSet %player%'s balance to $%amount%"
+  invalid_action: "§cInvalid action! Use give, take, or set"
+  failed_execute: "§cFailed to execute economy command!"
+
+  confirm_players_only: "§cOnly players can use confirmations!"
+  no_pending_confirm: "§cNo pending action to confirm!"
+  confirm_expired: "§cConfirmation expired! Please retry the command."
+
+  history_none: "§7No history found for '%player%'."
+  history_header: "§eShowing last %count% entries for '%player%':"
+
+  # Additional admin messages
+  setlevel_success: "§aSet %player%'s %job% level to %level%%suffix%"
+  refreshjobs_requires_online: "§cPlayer must be online to refresh job data!"
+  refreshjobs_success: "§aRefreshed job data for %player%"
+  invalidate_requires_online: "§cPlayer must be online to invalidate cached job data!"
+  invalidate_success: "§aInvalidated cached job data for %player%"
+  getlevel_value: "§a%player%'s '%job%' level is %level%%suffix%"
+  resetlevel_success: "§aReset %player%'s '%job%' level to 1%suffix%"
+  history_read_failed: "§cFailed to read history: %error%"
+
+  # Admin help (externalized)
+  help:
+    header: "§8§m----------§r §6Admin Help §8§m----------"
+    reload: "§f/djeconomy reload §7- Reload configuration"
+    setlevel: "§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)"
+    getlevel: "§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)"
+    resetlevel: "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"
+    addxp: "§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)"
+    economy: "§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money"
+    history: "§f/djeconomy history <player> [limit] §7- View recent admin economy actions"
+    refreshjobs: "§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)"
+    invalidatejobs: "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"

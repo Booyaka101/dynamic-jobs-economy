@@ -157,7 +157,7 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
 /djeconomy economy <give|take|set> <player> <amount>
   Manage player money; supports online/offline. (perm: djeconomy.admin.economy)
   - Negative amounts rejected; extremely large amounts rejected.
-  - Large amounts (>= 100000) require confirmation using /djeconomy confirm.
+  - Large amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`.
 
 /djeconomy confirm
   Confirm the last pending large economy action. (perm: djeconomy.admin.economy)
@@ -175,7 +175,7 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
 Notes:
 - Refresh/Invalidate require the player to be online.
 - History limit is clamped between 1 and 100; non-numeric defaults to 10. If no entries or file is missing, a friendly message is shown.
-- Economy large-amount confirmation prevents accidental big changes; use `/djeconomy confirm` after the warning.
+- Economy large-amount confirmation prevents accidental big changes; use `/djeconomy confirm` after the warning. Configure behavior via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml`, then apply with `/djeconomy reload`.
 
 #### Tab Completion
 - Admin tab completion is case-insensitive and permission-aware at the root.

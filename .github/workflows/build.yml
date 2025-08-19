@@ -22,8 +22,11 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build with Maven (run tests)
+      - name: Build with Maven (run unit tests only)
         run: mvn -B -DskipTests=false package
+
+      - name: Run database integration tests (Testcontainers)
+        run: mvn -B -P integration-tests -DskipTests=false test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
