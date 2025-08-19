@@ -27,7 +27,7 @@ class AdminCommandTabCompleteTest {
 
         // With prefix
         List<String> re = admin.onTabComplete(null, mock(Command.class), "djeconomy", new String[]{"re"});
-        assertEquals(Collections.singletonList("reload"), re);
+        assertEquals(Arrays.asList("reload", "refreshjobs"), re);
     }
 
     @Test
