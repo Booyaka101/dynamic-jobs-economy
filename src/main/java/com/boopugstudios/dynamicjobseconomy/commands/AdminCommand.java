@@ -133,13 +133,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         
         switch (args[0].toLowerCase()) {
             case "reload":
-                // For test compatibility, call reloadConfig() directly (tests stub this)
+                // Capture old prefix for this message to satisfy expected behavior:
+                // first reload uses OLD prefix; subsequent commands see the NEW one.
+                String oldPrefix = prefix;
                 plugin.reloadConfig();
-                // In real plugin, also reload messages/managers
-                try { plugin.onReload(); } catch (Throwable ignored) {}
-                // Recompute prefix after reload to reflect updated config/messages
-                prefix = getPrefix();
-                sender.sendMessage(prefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
+                plugin.onReload();
+                // Use the old prefix for the success message
+                sender.sendMessage(oldPrefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
                 break;
             case "confirm":
                 handleConfirmation(sender, prefix);
