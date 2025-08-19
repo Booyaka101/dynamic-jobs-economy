@@ -1,5 +1,19 @@
 # Dynamic Jobs & Economy Pro - Changelog
 
+## Unreleased
+
+### ✨ Improvements
+- 
+
+### 🐛 Bug Fixes
+- 
+
+### 🧪 Testing
+- 
+
+### 📚 Docs
+- 
+
 ## Version 1.0.3 - "Admin Economy Confirmation & Tests" (August 2025)
 
 ### 🧪 Testing
