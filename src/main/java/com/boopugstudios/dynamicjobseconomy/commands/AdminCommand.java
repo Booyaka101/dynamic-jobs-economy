@@ -99,8 +99,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             this.timestamp = System.currentTimeMillis();
         }
         
-        boolean isExpired() {
-            return System.currentTimeMillis() - timestamp > 30000; // 30 second timeout
+        boolean isExpired(long now) {
+            return now - timestamp > 30000; // 30 second timeout
         }
     }
     
@@ -302,7 +302,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 UUID senderUUID = sender instanceof Player ? ((Player) sender).getUniqueId() : null;
                 if (senderUUID != null) {
                     PendingAdminAction pending = pendingConfirmations.get(senderUUID);
-                    if (pending == null || pending.isExpired() || 
+                    if (pending == null || pending.isExpired(nowMillis()) || 
                         !pending.action.equals(action) || !pending.playerName.equals(playerName) || 
                         pending.amount != amount) {
                         
@@ -393,7 +393,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        if (pending.isExpired()) {
+        if (pending.isExpired(nowMillis())) {
             pendingConfirmations.remove(player.getUniqueId());
             sender.sendMessage(prefix + "§cConfirmation expired! Please retry the command.");
             return;
@@ -442,6 +442,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
      */
     protected OfflinePlayer[] getOfflinePlayersArray() {
         return Bukkit.getOfflinePlayers();
+    }
+
+    /**
+     * Time seam for tests to control confirmation expiry without sleeping.
+     */
+    protected long nowMillis() {
+        return System.currentTimeMillis();
     }
 
     @Override
