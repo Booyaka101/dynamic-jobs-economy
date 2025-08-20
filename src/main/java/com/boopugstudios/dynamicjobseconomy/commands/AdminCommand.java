@@ -566,12 +566,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private String getPrefix() {
         // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
-        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
-        if (fromConfig != null) return fromConfig;
+        // Use the overload with a non-null default so tests stubbing (path, default) are honored.
+        String fromConfig = plugin.getConfig().getString("messages.prefix", "");
+        if (fromConfig != null && !fromConfig.isEmpty()) return fromConfig;
         try {
             if (plugin.getMessages() != null) {
                 String fromMessages = plugin.getMessages().getPrefix();
-                if (fromMessages != null) return fromMessages;
+                if (fromMessages != null && !fromMessages.isEmpty()) return fromMessages;
             }
         } catch (Throwable ignored) {}
         return "§8[§6DynamicJobs§8] ";
