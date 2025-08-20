@@ -14,6 +14,27 @@
 ### 📚 Docs
 - 
 
+## Version 1.0.4 - "Admin Economy Fixes & i18n" (August 2025)
+
+### ✨ Improvements
+- Prefix precedence: `AdminCommand.getPrefix()` now prefers `config.yml` value, then messages.yml, then default; recalculated on `/djeconomy reload`.
+
+### 🐛 Bug Fixes
+- Offline player deposits now call `EconomyManager.depositPlayer(...)` when the target is offline.
+- Confirmation threshold/expiry correctly use `FileConfiguration#get*` overloads with defaults.
+- Guarded against missing economy manager and send `admin.economy_unavailable` message.
+- i18n keys and placeholders aligned for give/take/set, confirm prompts, expiry, offline notes, and reload success.
+
+### 🧪 Testing
+- AdminCommand economy edge cases and messages integration tests are green in CI.
+- Verified confirmation prompt and expiry window behavior using the time seam.
+- Verified offline player path triggers `depositPlayer` and correct messages.
+
+### 📚 Docs
+- Verified `README.md`, `USER_MANUAL.md`, and `permissions.yml` alignment with behavior.
+
+---
+
 ## Version 1.0.3 - "Admin Economy Confirmation & Tests" (August 2025)
 
 ### 🧪 Testing
