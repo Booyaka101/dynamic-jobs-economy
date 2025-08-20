@@ -1096,40 +1096,7 @@ public class ConsolidatedBusinessCommand implements CommandExecutor, TabComplete
         player.sendMessage("§f§lReports & Analytics:");
         player.sendMessage("§e/business performance-report <id> §7- View business performance");
         player.sendMessage("§e/business position-analytics <pos_id> §7- View position analytics");
-        player.sendMessage("");
-        player.sendMessage("§7💡 Tip: Businesses now generate revenue automatically based on their model!");
     }
-    
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> completions = new ArrayList<>();
-        
-        if (args.length == 1) {
-            String[] subCommands = {
-                "create", "list", "info", "deposit", "withdraw", "create-position", 
-                "list-positions", "hire-to-position", "fire-employee", "list-employees",
-                "edit-position", "promote-employee", "add-note", "employee-history",
-                "position-analytics", "deactivate-position", "reactivate-position",
-                "performance-report", "productivity-report", "effectiveness-report",
-                "job-offers", "accept-job", "reject-job", "set-revenue-model",
-                "revenue-models", "profitability-report", "revenue-history", "generate-revenue"
-            };
-            
-            for (String subCommand : subCommands) {
-                if (subCommand.toLowerCase().startsWith(args[0].toLowerCase())) {
-                    completions.add(subCommand);
-                }
-            }
-        }
-        
-        return completions;
-    }
-    
-    // ==================== MINECRAFT-VIABLE BUSINESS COMMAND HANDLERS ====================
-    
-    /**
-     * Handle GUI command to open business management interface
-     */
     private void handleGUICommand(Player player) {
         // Check permissions
         if (!player.hasPermission(BusinessPermissions.GUI_ACCESS)) {
@@ -1184,8 +1151,35 @@ public class ConsolidatedBusinessCommand implements CommandExecutor, TabComplete
     }
     
     /**
-     * Send help message to player
-     */
+    * Send help message to player
+    */
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+        
+        if (args.length == 1) {
+            String[] subCommands = {
+                "create", "list", "info", "deposit", "withdraw",
+                "create-position", "list-positions", "hire-to-position",
+                "fire-employee", "list-employees", "edit-position",
+                "promote-employee", "add-note", "employee-history",
+                "position-analytics", "deactivate-position", "reactivate-position",
+                "performance-report", "productivity-report", "effectiveness-report",
+                "job-offers", "accept-job", "reject-job", "set-revenue-model",
+                "revenue-models", "profitability-report", "revenue-history",
+                "generate-revenue", "manual-revenue", "gui", "menu"
+            };
+            
+            String prefix = args[0].toLowerCase();
+            for (String sub : subCommands) {
+                if (sub.startsWith(prefix)) {
+                    completions.add(sub);
+                }
+            }
+        }
+        
+        return completions;
+    }
     private void sendHelpMessage(Player player) {
         showBusinessHelp(player);
         
