@@ -9,7 +9,7 @@
 ### 🚀 **Quick Install (3 Steps)**
 
 #### **Step 1: Download & Place**
-1. Download `DynamicJobsEconomy-1.0.0.jar` from releases
+1. Download the latest JAR `DynamicJobsEconomy-1.0.4.jar` from releases
 2. Place it in your server's `plugins/` folder
 3. **That's it!** No additional files needed - everything is included!
 
@@ -38,8 +38,9 @@
 
 #### **For Admins:**
 ```
-/djeconomy reload       - Reload configuration
-/djeconomy setjobxp <player> <job> <xp> - Manage player progress
+/djeconomy reload                           - Reload configuration
+/djeconomy setlevel <player> <job> <level>  - Set player job level (online/offline)
+/djeconomy addxp <player> <job> <amount>    - Add XP to a player's job (online only)
 ```
 
 ### ⚙️ **Configuration**
@@ -54,6 +55,59 @@ The plugin works perfectly with **default settings**, but you can customize:
 #### **Economy Integration:**
 - **Vault** (Recommended) - Automatically detected and used
 - **Internal Economy** - Fallback system, works without Vault
+
+### 🛠️ **Admin Setup Checklist**
+
+- **Vault (optional, recommended):**
+  - Install Vault and a Vault-compatible economy plugin if you want to use your existing server economy.
+  - Ensure `integrations.vault.enabled: true` and `integrations.vault.use_vault_economy: true` in `plugins/DynamicJobsEconomy/config.yml`.
+  - Without Vault, the plugin uses its internal economy automatically.
+
+- **Database (choose one):**
+  - Default is `sqlite` (no setup needed).
+  - For MySQL, set:
+    ```yaml
+    database:
+      type: mysql
+      mysql:
+        host: localhost
+        port: 3306
+        database: dynamicjobs
+        username: your_user
+        password: your_pass
+        useSSL: false
+    ```
+  - For MongoDB, set:
+    ```yaml
+    database:
+      type: mongodb
+      mongodb:
+        connection_string: "mongodb://localhost:27017/dynamicjobs"
+    ```
+
+- **Permissions:**
+  - Grant all admin features: `djeconomy.admin`
+  - Or granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Player GUI access: `djeconomy.gui.access`
+  - LuckPerms examples:
+    ```bash
+    /lp group admin permission set djeconomy.admin true
+    /lp group default permission set djeconomy.gui.access true
+    ```
+
+- **Command Safety (large amounts):**
+  - Configure in `config.yml`:
+    ```yaml
+    economy:
+      admin_confirmation:
+        threshold: 100000.0      # Amount requiring confirmation
+        expiry_seconds: 30       # Window to confirm
+    ```
+  - Use `/djeconomy confirm` after a warning to finalize large operations.
+
+- **Choose the right JAR:**
+  - Use the main JAR for most servers: `DynamicJobsEconomy-1.0.4.jar`.
+  - Minimal builds (advanced): profiles like `spigot-lite`, `spigot-linux-sqlite`, `spigot-ultra`, `spigot-ultra-mysql` reduce size but may require external DB drivers or OS-specific natives.
 
 ### 🔧 **Advanced Setup**
 

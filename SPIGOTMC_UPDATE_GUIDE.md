@@ -1,16 +1,17 @@
-# SpigotMC Update Guide - Dynamic Jobs & Economy Pro v1.0.1
+# SpigotMC Update Guide - Dynamic Jobs & Economy Pro v1.0.4
 
 ## 📋 **Step-by-Step SpigotMC Update Process**
 
 ### **Step 1: Prepare Your Update**
 
 1. **Update Version Number**
-   - Open `pom.xml` and change version from `1.0.0` to `1.0.1`
-   - Build new JAR: `mvn clean package`
-   - Your new JAR will be: `DynamicJobsEconomy-1.0.1.jar`
+   - Ensure `pom.xml` version is `1.0.4`
+   - Build new JAR: `mvn clean package -DskipTests`
+   - Your new JAR will be in `target/`:
+     - `DynamicJobsEconomy-1.0.4.jar` (shaded, deploy this one)
 
 2. **Prepare Update Materials**
-   - New JAR file (DynamicJobsEconomy-1.0.1.jar)
+   - New JAR file (`DynamicJobsEconomy-1.0.4.jar`)
    - Changelog (see below for SpigotMC format)
    - Any new screenshots (optional)
 
@@ -25,9 +26,9 @@
 1. **Click "Update Resource"** (on your resource page)
 2. **Upload New File**:
    - Click "Choose File" 
-   - Select `DynamicJobsEconomy-1.0.1.jar`
-   - Set version name: `1.0.1`
-3. **Add Update Title**: `v1.0.1 - Polish & Security Update`
+   - Select `DynamicJobsEconomy-1.0.4.jar`
+   - Set version name: `1.0.4`
+3. **Add Update Title**: `v1.0.4 - Admin Economy Fixes & i18n`
 
 ### **Step 4: Add Changelog (SpigotMC Format)**
 
@@ -35,71 +36,30 @@ Copy and paste this changelog into the update description:
 
 ---
 
-## 🎉 **Dynamic Jobs & Economy Pro v1.0.1 - Polish & Security Update**
+## 🎉 Dynamic Jobs & Economy Pro v1.0.4 — Admin Economy Fixes & i18n
 
-### **🛡️ Security Enhancements**
-- **🔒 Gig Escrow System**: Gigs now require poster approval before payment is released
-- **👥 Employee Consent**: Business hiring/firing now requires employee acceptance
-- **⚠️ Admin Transaction Safety**: Large admin transactions (>$100k) require confirmation
-- **💾 Atomic Business Operations**: All business transactions are now rollback-safe
+### ✨ Improvements
+- Prefix precedence in admin messages now respects `config.yml` first, then `messages.yml`, then defaults; reloaded on `/djeconomy reload`.
+- Added `/business gui` and `/business menu` helpers to open the business GUI faster, with tab completion. (perm: `djeconomy.gui.access`)
 
-### **🤖 New Automated Features**
-- **💰 Auto-Payroll**: Businesses automatically pay employee salaries every hour
-- **💾 Auto-Save**: Player data saves every 5 minutes and on logout
-- **🧹 Memory Cleanup**: Automatic cleanup of tracking data to prevent memory leaks
+### 🐛 Bug Fixes
+- Offline player deposits now correctly use `EconomyManager.depositPlayer(...)` for offline targets.
+- Confirmation threshold/expiry now read with defaults using the correct `FileConfiguration#get*` overloads.
+- Added guard for missing economy manager with a friendly `admin.economy_unavailable` message.
+- Aligned i18n keys and placeholders across give/take/set, confirm prompts, expiry, offline flow, and reload success.
 
-### **👨‍💼 Enhanced Admin Commands**
-- **🌐 Offline Player Support**: All admin economy commands now work with offline players
-- **✅ New Confirmation System**: Use `/djeconomy confirm` for large transactions
-- **📝 Enhanced Logging**: All admin actions are logged with timestamps
-
-### **🎮 Improved User Experience**
-- **⌨️ Complete Tab Completion**: All commands now have full tab completion
-- **🎯 Real Job Perks**: Job perks now provide actual potion effects
-- **🛡️ Anti-Exploit Protection**: Added cooldowns to prevent farming abuse
-- **💬 Better Error Messages**: Clearer feedback for all operations
-
-### **🔧 New Command Features**
-
-**Business Commands:**
-- `/business accept-hire` - Accept a business job offer
-- `/business reject-hire` - Reject a business job offer
-- Enhanced `/business hire <player> <business_id>` - Now requires employee consent
-
-**Gig Commands:**
-- `/gigs approve <gig_id>` - Approve completed gig work (poster only)
-- `/gigs reject <gig_id>` - Reject completed gig work (poster only)
-- Enhanced `/gigs complete <gig_id>` - Now submits for approval instead of auto-paying
-
-**Admin Commands:**
-- `/djeconomy confirm` - Confirm large admin transactions
-- Enhanced `/djeconomy economy give/take/set <player> <amount>` - Now works with offline players
-- Enhanced `/djeconomy setlevel <player> <job> <level>` - Now works with offline players
-
-### **🐛 Critical Bug Fixes**
-- Fixed compilation errors in command classes
-- Resolved null pointer exceptions in admin commands
-- Fixed missing employee tracking in businesses
-- Corrected offline player economy operations
-- Improved plugin reload functionality
-
-### **⚡ Performance Improvements**
-- Optimized database queries
-- Fixed memory leaks in tracking systems
-- Enhanced async task management
-- Reduced server lag impact
+### 📚 Docs
+- Updated README/INSTALLATION with JAR guidance and new business GUI commands.
 
 ---
 
-**🔌 Compatibility**: Minecraft 1.20.4 - 1.21.x  
-**🔗 Integrations**: Vault, WorldGuard, McMMO, LuckPerms, ShopGUIPlus  
-**💾 Databases**: SQLite, MySQL, MongoDB  
+Compatibility: 1.20.4 – 1.21.x  |  Integrations: Vault, WorldGuard, McMMO, LuckPerms  |  Databases: SQLite, MySQL, MongoDB
 
-**⚠️ Important**: This update includes significant security improvements. Existing gigs and businesses will continue to work, but new security features will apply to all new transactions.
+---
 
 **🆙 Update Instructions**:
 1. Stop your server
-2. Replace the old JAR with the new one
+2. Replace the old JAR with `DynamicJobsEconomy-1.0.4.jar`
 3. Start your server
 4. Run `/djeconomy reload` (optional)
 
@@ -153,8 +113,8 @@ Copy and paste this changelog into the update description:
 
 ### **File Naming**:
 - Always include version in filename
-- Use consistent naming: `PluginName-Version.jar`
-- Example: `DynamicJobsEconomy-1.0.1.jar`
+- The produced JAR is shaded by default
+- Example: `DynamicJobsEconomy-1.0.4.jar`
 
 ---
 

@@ -18,6 +18,7 @@
 
 ### ✨ Improvements
 - Prefix precedence: `AdminCommand.getPrefix()` now prefers `config.yml` value, then messages.yml, then default; recalculated on `/djeconomy reload`.
+- Added quick-access commands `/business gui` and `/business menu` (with tab completion) to open the business GUI faster. Permission: `djeconomy.gui.access`.
 
 ### 🐛 Bug Fixes
 - Offline player deposits now call `EconomyManager.depositPlayer(...)` when the target is offline.

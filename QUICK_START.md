@@ -8,6 +8,7 @@
 ```bash
 # Just drop the JAR file in your plugins folder - that's it!
 # No dependencies required, everything is included
+# Use the JAR from target (e.g. DynamicJobsEconomy-1.0.4.jar)
 ```
 
 #### **2. First Launch**
@@ -24,7 +25,52 @@ When you start your server, you'll see:
 /djeconomy status        # Check plugin status
 /jobs list              # See all available jobs
 /gigs list              # View gig marketplace
+/business gui           # Open the business GUI
 ```
+
+### 🛠️ Admin Setup (Vault, DB, Permissions)
+
+- Vault (optional, recommended):
+  - Install Vault and a compatible economy plugin to use the server-wide economy.
+  - In `plugins/DynamicJobsEconomy/config.yml`, set `integrations.vault.enabled: true` and `integrations.vault.use_vault_economy: true`.
+  - Without Vault, the plugin uses its internal economy.
+
+- Database:
+  - Default `sqlite` works out-of-the-box.
+  - MySQL example:
+    ```yaml
+    database:
+      type: mysql
+      mysql:
+        host: localhost
+        port: 3306
+        database: dynamicjobs
+        username: your_user
+        password: your_pass
+        useSSL: false
+    ```
+  - MongoDB example:
+    ```yaml
+    database:
+      type: mongodb
+      mongodb:
+        connection_string: "mongodb://localhost:27017/dynamicjobs"
+    ```
+
+- Permissions:
+  - Admin: `djeconomy.admin`
+  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Player GUI: `djeconomy.gui.access`
+
+- Command safety (large amounts):
+  - In `config.yml`:
+    ```yaml
+    economy:
+      admin_confirmation:
+        threshold: 100000.0
+        expiry_seconds: 30
+    ```
+  - Use `/djeconomy confirm` to finalize large admin money actions.
 
 ### **For Players:**
 
@@ -106,14 +152,16 @@ Your plugin comes pre-configured with balanced settings:
 /business fire <player> <business_id>       # Fire employee
 /business deposit <business_id> <amount>    # Add funds
 /business withdraw <business_id> <amount>   # Take funds
+/business gui                               # Open the business GUI (perm: djeconomy.gui.access)
+/business menu                              # Alias for GUI (perm: djeconomy.gui.access)
 ```
 
 ### **Admin Commands:**
 ```
 /djeconomy reload                           # Reload config
 /djeconomy status                          # Plugin status
-/djeconomy setjobxp <player> <job> <xp>    # Set player XP
-/djeconomy addjobxp <player> <job> <xp>    # Add player XP
+/djeconomy setlevel <player> <job> <level> # Set player job level (online/offline)
+/djeconomy addxp <player> <job> <amount>   # Add XP to a player's job (online only)
 ```
 
 ## 🔧 **Customization Made Easy**

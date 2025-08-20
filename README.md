@@ -20,7 +20,57 @@ A Minecraft economy plugin that actually makes sense. Jobs, gigs, and businesses
 2. Restart server
 3. Done! It works out of the box
 
+Note: The built JAR is shaded. Use the JAR from `target/`, e.g. `DynamicJobsEconomy-1.0.4.jar`.
+
 Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
+
+### Admin Setup (Recommended)
+
+- Vault integration (optional):
+  - Install Vault and a compatible economy plugin to use your server-wide economy.
+  - In `plugins/DynamicJobsEconomy/config.yml`, ensure `integrations.vault.enabled: true` and `integrations.vault.use_vault_economy: true`.
+  - Without Vault, the plugin uses its internal economy.
+
+- Database:
+  - Default `sqlite` works out-of-the-box.
+  - MySQL example:
+    ```yaml
+    database:
+      type: mysql
+      mysql:
+        host: localhost
+        port: 3306
+        database: dynamicjobs
+        username: your_user
+        password: your_pass
+        useSSL: false
+    ```
+  - MongoDB example:
+    ```yaml
+    database:
+      type: mongodb
+      mongodb:
+        connection_string: "mongodb://localhost:27017/dynamicjobs"
+    ```
+
+- Permissions:
+  - Admin: `djeconomy.admin`
+  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Player GUI: `djeconomy.gui.access`
+
+- Command safety for large amounts:
+  - Configure in `config.yml`:
+    ```yaml
+    economy:
+      admin_confirmation:
+        threshold: 100000.0
+        expiry_seconds: 30
+    ```
+  - Use `/djeconomy confirm` to finalize large economy actions.
+
+- Choose the right JAR:
+  - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.4.jar`.
+  - Advanced: minimal profiles like `spigot-lite`, `spigot-linux-sqlite`, `spigot-ultra`, `spigot-ultra-mysql` offer smaller JARs with trade-offs.
 
 ## Commands
 
@@ -28,6 +78,8 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - `/jobs` - See your jobs, join new ones
 - `/gigs` - Browse gigs, create your own
 - `/business` - Manage your company
+- `/business gui` - Open the business GUI
+- `/business menu` - Open the business GUI (alias)
 
 **For admins:**
 - `/djeconomy reload` - Reload config
@@ -46,12 +98,15 @@ Note: Large economy amounts at or above the configured threshold require confirm
 ### Tab Completion
 
 - Admin command tab completion is case-insensitive for both player names and job names.
+- Business command includes tab completion for `gui` and `menu`.
 
 ### Permissions
 
 - Grant all admin features with `djeconomy.admin` or use granular nodes:
   - `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`,
     `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`.
+
+- Player GUI access: `djeconomy.gui.access`.
 
 That's it. Everything else is pretty self-explanatory.
 

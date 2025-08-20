@@ -84,6 +84,8 @@
 /business fire <player> <business_id>       # Fire employees
 /business deposit <business_id> <amount>    # Add funds
 /business withdraw <business_id> <amount>   # Take profits
+/business gui                               # Open the business GUI (perm: djeconomy.gui.access)
+/business menu                              # Alias for GUI (perm: djeconomy.gui.access)
 ```
 
 #### **Business Features:**
@@ -185,6 +187,32 @@ Notes:
   - Third argument: online player names.
 - For `setlevel` and `addxp`, the third argument suggests job names (case-insensitive).
 - For `history`, the optional third argument suggests limits like `5`, `10`, `20`, `50`.
+
+### **🛠️ Admin Setup Quick Reference**
+
+- Vault (optional): Install Vault and a compatible economy plugin. In `config.yml` set `integrations.vault.enabled: true` and `integrations.vault.use_vault_economy: true`. Without Vault, the internal economy is used.
+- Database: Default `sqlite`. For MySQL or MongoDB, update `database` in `config.yml`:
+  ```yaml
+  database:
+    type: mysql
+    mysql:
+      host: localhost
+      port: 3306
+      database: dynamicjobs
+      username: your_user
+      password: your_pass
+      useSSL: false
+  # or
+  database:
+    type: mongodb
+    mongodb:
+      connection_string: "mongodb://localhost:27017/dynamicjobs"
+  ```
+- Permissions:
+  - Admin: `djeconomy.admin`
+  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Player GUI: `djeconomy.gui.access`
+- Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. Use `/djeconomy confirm` to finalize large operations.
 
 ### **🆘 Troubleshooting**
 
