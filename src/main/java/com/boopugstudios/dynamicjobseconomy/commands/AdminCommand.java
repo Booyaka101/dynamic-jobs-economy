@@ -409,7 +409,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         Map<String, String> ph = new HashMap<>();
                         ph.put("amount", String.format("%.2f", amount));
                         ph.put("player", resolution.getName());
-                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSet %player%'s balance to $%amount%"));
+                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSET %player% $%amount%"));
                         logAdminAction(sender, "SET", resolution.getName(), amount);
                         success = true;
                     }
