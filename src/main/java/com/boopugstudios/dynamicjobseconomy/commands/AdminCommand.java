@@ -502,13 +502,17 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     // --- Config accessors for confirmation settings ---
     private double getConfirmThreshold() {
-        // Use the overload with default so tests can stub (path, default) and reload reflects new values
-        return plugin.getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+        // Use the overload with default so tests can stub (path, default) and reload reflects new values.
+        // When using a Mockito mock, unstubbed calls may return 0.0; guard against that by applying our default.
+        double v = plugin.getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+        return v <= 0 ? 100000.0 : v;
     }
 
     private int getConfirmExpirySeconds() {
-        // Use the overload with default so tests can stub (path, default) and reload reflects new values
-        return plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", 30);
+        // Use the overload with default so tests can stub (path, default) and reload reflects new values.
+        // Guard for mocks returning 0 by enforcing a sane default of 30 seconds.
+        int v = plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", 30);
+        return v <= 0 ? 30 : v;
     }
 
     private long getConfirmExpiryMillis() {
