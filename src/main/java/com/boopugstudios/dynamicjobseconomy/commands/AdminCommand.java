@@ -350,15 +350,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             }
             
             // Execute the action
-            // Ensure the EconomyManager is available (tests may not mock it)
-            if (plugin.getEconomyManager() == null) {
-                sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
-                return;
-            }
-            
             boolean success = false;
             switch (action.toLowerCase()) {
                 case "give":
+                    // Ensure the EconomyManager is available (tests may not mock it)
+                    if (plugin.getEconomyManager() == null) {
+                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
+                        return;
+                    }
                     if (resolution.isOnline) {
                         success = plugin.getEconomyManager().deposit(resolution.onlinePlayer, amount);
                     } else {
@@ -373,6 +372,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "take":
+                    // Ensure the EconomyManager is available
+                    if (plugin.getEconomyManager() == null) {
+                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
+                        return;
+                    }
                     double currentBalance = resolution.isOnline ? 
                         plugin.getEconomyManager().getBalance(resolution.onlinePlayer) :
                         plugin.getEconomyManager().getBalance(resolution.offlinePlayer);
@@ -396,6 +400,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "set":
+                    // Ensure the EconomyManager is available
+                    if (plugin.getEconomyManager() == null) {
+                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
+                        return;
+                    }
                     double current = resolution.isOnline ? 
                         plugin.getEconomyManager().getBalance(resolution.onlinePlayer) :
                         plugin.getEconomyManager().getBalance(resolution.offlinePlayer);
@@ -570,8 +579,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private String getPrefix() {
         // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
-        // Use the overload with a non-null default so tests stubbing (path, default) are honored.
-        String fromConfig = plugin.getConfig().getString("messages.prefix", "");
+        // Use the overload with a null default so tests stubbing (path, default) are honored.
+        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
         if (fromConfig != null && !fromConfig.isEmpty()) return fromConfig;
         try {
             if (plugin.getMessages() != null) {
