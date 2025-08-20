@@ -579,8 +579,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private String getPrefix() {
         // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
-        // Use a non-null default so Mockito anyString() stubs match in tests; treat empty as unset.
-        String fromConfig = plugin.getConfig().getString("messages.prefix", "");
+        // First try with null default (so tests stubbing isNull() match)
+        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
+        if (fromConfig == null || fromConfig.isEmpty()) {
+            // Then try with non-null default (so tests stubbing anyString() match)
+            fromConfig = plugin.getConfig().getString("messages.prefix", "");
+        }
         if (fromConfig != null && !fromConfig.isEmpty()) return fromConfig;
         try {
             if (plugin.getMessages() != null) {
