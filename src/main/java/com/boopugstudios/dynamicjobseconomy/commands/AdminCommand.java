@@ -133,11 +133,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         
         switch (args[0].toLowerCase()) {
             case "reload":
-                // Perform reload, then recompute prefix and use the NEW prefix for the success message
+                // Perform reload; use the existing prefix for this message.
+                // Subsequent commands will observe the new prefix via getPrefix().
                 plugin.reloadConfig();
                 plugin.onReload();
-                String newPrefix = getPrefix();
-                sender.sendMessage(newPrefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
+                sender.sendMessage(prefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
                 break;
             case "confirm":
                 handleConfirmation(sender, prefix);
@@ -418,7 +418,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                         Map<String, String> ph = new HashMap<>();
                         ph.put("amount", String.format("%.2f", amount));
                         ph.put("player", resolution.getName());
-                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSET %player% $%amount%"));
+                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSet %player%'s balance to $%amount%"));
                         logAdminAction(sender, "SET", resolution.getName(), amount);
                         success = true;
                     }
@@ -579,8 +579,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private String getPrefix() {
         // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
-        // Use the overload with a null default so tests stubbing (path, default) are honored.
-        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
+        // Use a non-null default so Mockito anyString() stubs match in tests; treat empty as unset.
+        String fromConfig = plugin.getConfig().getString("messages.prefix", "");
         if (fromConfig != null && !fromConfig.isEmpty()) return fromConfig;
         try {
             if (plugin.getMessages() != null) {
