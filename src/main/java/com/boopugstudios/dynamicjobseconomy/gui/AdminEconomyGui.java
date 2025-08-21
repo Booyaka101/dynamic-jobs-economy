@@ -297,19 +297,26 @@ public class AdminEconomyGui implements Listener {
             case CONFIRMATIONS:
                 if ("Back".equalsIgnoreCase(name)) { openHome(p); break; }
                 if ("Approve".equalsIgnoreCase(name)) {
-                    // Audit log approval intent and reuse command path to ensure identical validation and logging
+                    // Switch to chat-based reason capture instead of immediate confirmation
                     AdminConfirmationManager mgr = plugin.getAdminConfirmationManager();
                     AdminConfirmationManager.PendingAdminAction pending = (mgr != null) ? mgr.getPending(p.getUniqueId()) : null;
                     try {
                         if (pending != null) {
-                            plugin.getLogger().info(String.format("[ADMIN-GUI] %s approved %s %s $%.2f",
+                            plugin.getLogger().info(String.format("[ADMIN-GUI] %s approved (awaiting reason) %s %s $%.2f",
                                 p.getName(), String.valueOf(pending.action), String.valueOf(pending.playerName), pending.amount));
+                            if (mgr != null) {
+                                mgr.setAwaitingReason(p.getUniqueId(), true);
+                            }
                         } else {
                             plugin.getLogger().info(String.format("[ADMIN-GUI] %s clicked Approve with no pending action", p.getName()));
                         }
                     } catch (Throwable ignored) {}
                     p.closeInventory();
-                    p.performCommand("djeconomy confirm");
+                    // Prompt for reason via chat
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("seconds", String.valueOf(plugin.getAdminConfirmationManager().getExpirySeconds()));
+                    p.sendMessage(getPrefix() + msg("admin.reason.prompt", ph, "§ePlease type a reason in chat for this action (expires in %seconds%s)."));
+                    p.sendMessage(getPrefix() + msg("admin.reason.hint", null, "§7Example: 'Refund for bug', 'Anti-cheat action', or 'Manual adjustment'."));
                     break;
                 }
                 if ("Cancel".equalsIgnoreCase(name)) {

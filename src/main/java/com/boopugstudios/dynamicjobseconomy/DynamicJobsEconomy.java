@@ -8,6 +8,7 @@ import com.boopugstudios.dynamicjobseconomy.integrations.IntegrationManager;
 import com.boopugstudios.dynamicjobseconomy.jobs.JobManager;
 import com.boopugstudios.dynamicjobseconomy.admin.AdminAuditLogger;
 import com.boopugstudios.dynamicjobseconomy.admin.AdminConfirmationManager;
+import com.boopugstudios.dynamicjobseconomy.admin.AdminReasonChatListener;
 import com.boopugstudios.dynamicjobseconomy.business.ConsolidatedBusinessManager;
 import com.boopugstudios.dynamicjobseconomy.gigs.GigManager;
 import com.boopugstudios.dynamicjobseconomy.notifications.NotificationManager;
@@ -217,6 +218,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JobListener(this), this);
         getServer().getPluginManager().registerEvents(new BusinessListener(this), this);
         getServer().getPluginManager().registerEvents(notificationManager, this);
+        getServer().getPluginManager().registerEvents(new AdminReasonChatListener(this), this);
     }
     
     // Getters for managers

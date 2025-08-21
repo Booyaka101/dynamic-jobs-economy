@@ -198,11 +198,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 break;
             case "history":
                 if (args.length < 2) {
-                    sender.sendMessage(prefix + msg("admin.usage.history", null, "§cUsage: /djeconomy history <player> [limit]"));
+                    sender.sendMessage(prefix + msg("admin.usage.history", null, "§cUsage: /djeconomy history <player> [page] [size]"));
                     return true;
                 }
-                String limit = args.length >= 3 ? args[2] : null;
-                handleHistory(sender, args[1], limit, prefix);
+                String page = args.length >= 3 ? args[2] : null;
+                String size = args.length >= 4 ? args[3] : null;
+                handleHistory(sender, args[1], page, size, prefix);
                 break;
             case "businessinfo":
                 handleBusinessInfo(sender, args, prefix);
@@ -370,8 +371,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 }
             }
             
-            // Execute the action
-            boolean success = performEconomy(sender, action, resolution, amount, prefix);
+            // Execute the action (no explicit reason provided in direct execution)
+            boolean success = performEconomy(sender, action, resolution, amount, prefix, null);
             if (!success) {
                 sender.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
             }
@@ -381,7 +382,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private boolean performEconomy(CommandSender sender, String action, PlayerResolution resolution, double amount, String prefix) {
+    private boolean performEconomy(CommandSender sender, String action, PlayerResolution resolution, double amount, String prefix, String reason) {
         EconomyManager econ = plugin.getEconomyManager();
         String admin = (sender instanceof Player) ? ((Player) sender).getName() : "Console";
         switch (action.toLowerCase()) {
@@ -395,7 +396,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     ph.put("money", money);
                     ph.put("player", resolution.getName());
                     sender.sendMessage(prefix + msg("admin.give_success", ph, "§aGave %money% to %player%"));
-                    appendHistory(admin, "GIVE", resolution.getName(), amount);
+                    appendHistory(admin, "GIVE", resolution.getName(), amount, reason);
                     return true;
                 }
                 return false;
@@ -421,7 +422,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     ph.put("money", money);
                     ph.put("player", resolution.getName());
                     sender.sendMessage(prefix + msg("admin.take_success", ph, "§aTook %money% from %player%"));
-                    appendHistory(admin, "TAKE", resolution.getName(), amount);
+                    appendHistory(admin, "TAKE", resolution.getName(), amount, reason);
                     return true;
                 }
                 return false;
@@ -447,7 +448,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     ph.put("money", money);
                     sender.sendMessage(prefix + msg("admin.set_success", ph,
                         "§aSet %player%'s balance to %money%"));
-                    appendHistory(admin, "SET", resolution.getName(), amount);
+                    appendHistory(admin, "SET", resolution.getName(), amount, reason);
                     return true;
                 }
                 return false;
@@ -481,7 +482,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
         
         // Execute the original command with confirmation bypass
-        mgr.remove(player.getUniqueId());
+        // If still awaiting reason, remind and exit
+        if (mgr.isAwaitingReason(player.getUniqueId())) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("seconds", String.valueOf(mgr.getExpirySeconds()));
+            sender.sendMessage(prefix + msg("admin.reason.still_awaiting", ph, "§ePlease type a reason in chat to proceed."));
+            return;
+        }
+        String storedReason = mgr.getReason(player.getUniqueId());
         PlayerResolution resolution = resolvePlayer(pending.playerName);
         if (!resolution.isValid()) {
             Map<String, String> ph = new HashMap<>();
@@ -494,10 +502,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             ph.put("player", pending.playerName);
             sender.sendMessage(prefix + msg("admin.offline_note", ph, "§7Note: Player '%player%' is offline. Processing transaction..."));
         }
-        boolean success = performEconomy(sender, pending.action, resolution, pending.amount, prefix);
+        boolean success = performEconomy(sender, pending.action, resolution, pending.amount, prefix, storedReason);
         if (!success) {
             sender.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
         }
+        // Remove pending after execution attempt
+        mgr.remove(player.getUniqueId());
     }
 
     private void showAdminHelp(CommandSender sender, String prefix) {
@@ -510,7 +520,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("admin.help.resetlevel", null, "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"));
         sender.sendMessage(msg("admin.help.addxp", null, "§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)"));
         sender.sendMessage(msg("admin.help.economy", null, "§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money"));
-        sender.sendMessage(msg("admin.help.history", null, "§f/djeconomy history <player> [limit] §7- View recent admin economy actions"));
+        sender.sendMessage(msg("admin.help.history", null, "§f/djeconomy history <player> [page] [size] §7- View admin economy history (with reasons)"));
         sender.sendMessage(msg("admin.help.refreshjobs", null, "§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)"));
         sender.sendMessage(msg("admin.help.invalidatejobs", null, "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"));
         sender.sendMessage(msg("admin.help.businessinfo", null, "§f/djeconomy businessinfo [businessName] §7- View global or per-business stats"));
@@ -626,10 +636,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
             }
             if (args[0].equalsIgnoreCase("history")) {
-                return Arrays.asList("5", "10", "20", "50").stream()
+                return Arrays.asList("1", "2", "3", "4", "5").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("history")) {
+            return Arrays.asList("5", "10", "20", "50").stream()
+                .filter(s -> s.startsWith(args[3]))
+                .collect(Collectors.toList());
         }
 
         return new ArrayList<>();
@@ -873,22 +889,24 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return new File(dir, "admin-economy-history.log");
     }
 
-    private void appendHistory(String admin, String action, String target, double amount) {
+    private void appendHistory(String admin, String action, String target, double amount, String reason) {
         File file = getHistoryFile();
         try (PrintWriter out = new PrintWriter(new FileWriter(file, true))) {
-            out.printf("%d|%s|%s|%s|%.2f%n", System.currentTimeMillis(), admin, action, target, amount);
+            String safeReason = reason == null ? "" : reason.replace('\n', ' ').replace('\r', ' ');
+            out.printf("%d|%s|%s|%s|%.2f|%s%n", System.currentTimeMillis(), admin, action, target, amount, safeReason);
         } catch (IOException e) {
             plugin.getLogger().warning("Failed to write history: " + e.getMessage());
         }
     }
 
-    private void handleHistory(CommandSender sender, String playerName, String limitStr, String prefix) {
-        int limit = 10;
-        if (limitStr != null) {
-            try { limit = Integer.parseInt(limitStr); } catch (NumberFormatException ignored) {}
-        }
-        if (limit < 1) limit = 1;
-        if (limit > 100) limit = 100;
+    private void handleHistory(CommandSender sender, String playerName, String pageStr, String sizeStr, String prefix) {
+        int page = 1;
+        int size = 10;
+        try { if (pageStr != null) page = Integer.parseInt(pageStr); } catch (NumberFormatException ignored) {}
+        try { if (sizeStr != null) size = Integer.parseInt(sizeStr); } catch (NumberFormatException ignored) {}
+        if (page < 1) page = 1;
+        if (size < 1) size = 1;
+        if (size > 50) size = 50;
 
         Path path = getHistoryFile().toPath();
         if (!Files.exists(path)) {
@@ -899,34 +917,44 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
         try {
             List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-            List<String> filtered = new ArrayList<>();
-            for (int i = lines.size() - 1; i >= 0 && filtered.size() < limit; i--) {
+            List<String> entries = new ArrayList<>();
+            for (int i = lines.size() - 1; i >= 0; i--) {
                 String line = lines.get(i);
                 String[] parts = line.split("\\|", -1);
-                if (parts.length != 5) continue;
+                if (parts.length < 5) continue;
                 String target = parts[3];
-                if (target.equalsIgnoreCase(playerName)) {
-                    long ts;
-                    try { ts = Long.parseLong(parts[0]); } catch (NumberFormatException ex) { ts = System.currentTimeMillis(); }
-                    String admin = parts[1];
-                    String action = parts[2];
-                    String amount = parts[4];
-                    String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(ts));
-                    filtered.add(String.format("§7[%s] §f%s §7-> §6%s §7$%s", time, admin, action + " " + target, amount));
-                }
+                if (!target.equalsIgnoreCase(playerName)) continue;
+                long ts;
+                try { ts = Long.parseLong(parts[0]); } catch (NumberFormatException ex) { ts = System.currentTimeMillis(); }
+                String admin = parts[1];
+                String action = parts[2];
+                String amount = parts[4];
+                String reason = parts.length >= 6 ? parts[5] : null;
+                String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(ts));
+                String formatted = reason == null || reason.isEmpty()
+                    ? String.format("§7[%s] §f%s §7-> §6%s §7$%s", time, admin, action + " " + target, amount)
+                    : String.format("§7[%s] §f%s §7-> §6%s §7$%s §8| §7Reason: §f%s", time, admin, action + " " + target, amount, reason);
+                entries.add(formatted);
             }
-            if (filtered.isEmpty()) {
+            if (entries.isEmpty()) {
                 Map<String, String> ph = new HashMap<>();
                 ph.put("player", playerName);
                 sender.sendMessage(prefix + msg("admin.history_none", ph, "§7No history found for '%player%'."));
                 return;
             }
+
+            int total = entries.size();
+            int totalPages = (int) Math.ceil(total / (double) size);
+            if (page > totalPages) page = totalPages;
+            int from = Math.max(0, (page - 1) * size);
+            int to = Math.min(total, from + size);
             Map<String, String> ph2 = new HashMap<>();
-            ph2.put("count", String.valueOf(filtered.size()));
             ph2.put("player", playerName);
-            sender.sendMessage(prefix + msg("admin.history_header", ph2, "§eShowing last %count% entries for '%player%':"));
-            for (String msg : filtered) {
-                sender.sendMessage(msg);
+            ph2.put("page", String.valueOf(page));
+            ph2.put("pages", String.valueOf(Math.max(totalPages, 1)));
+            sender.sendMessage(prefix + msg("admin.history_header", ph2, "§eHistory for '%player%' §7(Page %page%/%pages%)"));
+            for (int i = from; i < to; i++) {
+                sender.sendMessage(entries.get(i));
             }
         } catch (IOException e) {
             Map<String, String> ph = new HashMap<>();
