@@ -14,7 +14,7 @@
 ### 📚 Docs
 - 
 
-## Version 1.0.4.1 - "GUI Tooltip Hotfix" (August 2025)
+## Version 1.0.4.1 - "GUI Tooltip Hotfix, and GUI Protection" (August 2025)
 
 ### 🐛 Bug Fixes
 - Fixed persistent blank tooltip when hovering over empty GUI slots by introducing a config toggle to disable filler panes.
