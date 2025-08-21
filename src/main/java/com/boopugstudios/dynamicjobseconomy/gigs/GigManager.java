@@ -116,7 +116,7 @@ public class GigManager {
                     // Notify poster that gig is ready for review
                     Player poster = plugin.getServer().getPlayer(gig.getPosterUUID());
                     if (poster != null && poster.isOnline()) {
-                        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                        String prefix = getPrefix();
                         poster.sendMessage(prefix + "§e" + worker.getName() + " has submitted completion for gig: §f" + gig.getTitle());
                         poster.sendMessage(prefix + "§7Use §f/gigs review " + gigId + " §7to approve or reject it.");
                     }
@@ -174,7 +174,7 @@ public class GigManager {
                         
                         // Notify worker if online
                         if (onlineWorker != null) {
-                            String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                            String prefix = getPrefix();
                             onlineWorker.sendMessage(prefix + "§aGig approved! Payment of §f$" + String.format("%.2f", workerPayment) + " §areceived.");
                         }
                         
@@ -253,7 +253,7 @@ public class GigManager {
                 
                 // Notify poster if online
                 if (onlinePoster != null) {
-                    String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                    String prefix = getPrefix();
                     onlinePoster.sendMessage(prefix + "§cGig #" + gig.getId() + " approval failed. Escrow refunded: $" + 
                         String.format("%.2f", refundAmount));
                     onlinePoster.sendMessage(prefix + "§7Reason: " + reason);
@@ -267,7 +267,7 @@ public class GigManager {
                 
                 // Notify online poster of the issue
                 if (onlinePoster != null) {
-                    String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                    String prefix = getPrefix();
                     onlinePoster.sendMessage(prefix + "§4CRITICAL ERROR: Escrow refund failed! Contact an administrator immediately.");
                     onlinePoster.sendMessage(prefix + "§7Gig ID: #" + gig.getId() + ", Amount: $" + String.format("%.2f", refundAmount));
                 }
@@ -299,7 +299,7 @@ public class GigManager {
                     // Notify worker if online
                     Player worker = plugin.getServer().getPlayer(gig.getWorkerUUID());
                     if (worker != null && worker.isOnline()) {
-                        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                        String prefix = getPrefix();
                         worker.sendMessage(prefix + "§cGig submission rejected by " + poster.getName());
                         if (reason != null && !reason.trim().isEmpty()) {
                             worker.sendMessage(prefix + "§7Reason: " + reason);
@@ -353,7 +353,7 @@ public class GigManager {
                         if (isInProgress && gig.getWorkerUUID() != null) {
                             Player worker = plugin.getServer().getPlayer(gig.getWorkerUUID());
                             if (worker != null && worker.isOnline()) {
-                                String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                                String prefix = getPrefix();
                                 worker.sendMessage(prefix + "§cGig '" + gig.getTitle() + "' has been cancelled by the poster.");
                             }
                         }
@@ -415,6 +415,17 @@ public class GigManager {
         loadActiveGigs();
     }
     
+    private String getPrefix() {
+        // Centralized prefix retrieval via Messages; it already prefers config.yml override then messages.yml
+        try {
+            if (plugin.getMessages() != null) {
+                String p = plugin.getMessages().getPrefix();
+                if (p != null && !p.isEmpty()) return p;
+            }
+        } catch (Throwable ignored) {}
+        return "§8[§6DynamicJobs§8] ";
+    }
+    
     /**
      * Checks for gigs that have exceeded the timeout period and auto-resolves them
      */
@@ -468,14 +479,14 @@ public class GigManager {
                                 
                                 // Notify players if online
                                 if (onlineWorker != null) {
-                                    String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                                    String prefix = getPrefix();
                                     onlineWorker.sendMessage(prefix + "§aGig '" + title + "' auto-approved due to timeout. Payment received: $" + 
                                         String.format("%.2f", workerPayment));
                                 }
                                 
                                 Player onlinePoster = plugin.getServer().getPlayer(posterUUID);
                                 if (onlinePoster != null) {
-                                    String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                                    String prefix = getPrefix();
                                     onlinePoster.sendMessage(prefix + "§7Gig '" + title + "' was auto-approved due to " + timeoutDays + 
                                         " day timeout. Worker has been paid.");
                                 }

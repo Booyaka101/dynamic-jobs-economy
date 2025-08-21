@@ -1,17 +1,17 @@
-# SpigotMC Update Guide - Dynamic Jobs & Economy Pro v1.0.4
+# SpigotMC Update Guide - Dynamic Jobs & Economy Pro v1.0.5
 
 ## 📋 **Step-by-Step SpigotMC Update Process**
 
 ### **Step 1: Prepare Your Update**
 
 1. **Update Version Number**
-   - Ensure `pom.xml` version is `1.0.4`
+   - Ensure `pom.xml` version is `1.0.5`
    - Build new JAR: `mvn clean package -DskipTests`
    - Your new JAR will be in `target/`:
-     - `DynamicJobsEconomy-1.0.4.jar` (shaded, deploy this one)
+     - `DynamicJobsEconomy-1.0.5.jar` (shaded, deploy this one)
 
 2. **Prepare Update Materials**
-   - New JAR file (`DynamicJobsEconomy-1.0.4.jar`)
+   - New JAR file (`DynamicJobsEconomy-1.0.5.jar`)
    - Changelog (see below for SpigotMC format)
    - Any new screenshots (optional)
 
@@ -26,9 +26,9 @@
 1. **Click "Update Resource"** (on your resource page)
 2. **Upload New File**:
    - Click "Choose File" 
-   - Select `DynamicJobsEconomy-1.0.4.jar`
-   - Set version name: `1.0.4`
-3. **Add Update Title**: `v1.0.4 - Admin Economy Fixes & i18n`
+   - Select `DynamicJobsEconomy-1.0.5.jar`
+   - Set version name: `1.0.5`
+3. **Add Update Title**: `v1.0.5 - Polish & Performance Reporting Fix`
 
 ### **Step 4: Add Changelog (SpigotMC Format)**
 
@@ -36,20 +36,16 @@ Copy and paste this changelog into the update description:
 
 ---
 
-## 🎉 Dynamic Jobs & Economy Pro v1.0.4 — Admin Economy Fixes & i18n
+## 🎉 Dynamic Jobs & Economy Pro v1.0.5 — Polish & Performance Reporting Fix
 
 ### ✨ Improvements
-- Prefix precedence in admin messages now respects `config.yml` first, then `messages.yml`, then defaults; reloaded on `/djeconomy reload`.
-- Added `/business gui` and `/business menu` helpers to open the business GUI faster, with tab completion. (perm: `djeconomy.gui.access`)
+- Minor polish across business command help and GUI documentation.
 
 ### 🐛 Bug Fixes
-- Offline player deposits now correctly use `EconomyManager.depositPlayer(...)` for offline targets.
-- Confirmation threshold/expiry now read with defaults using the correct `FileConfiguration#get*` overloads.
-- Added guard for missing economy manager with a friendly `admin.economy_unavailable` message.
-- Aligned i18n keys and placeholders across give/take/set, confirm prompts, expiry, offline flow, and reload success.
+- Fixed a critical bug in `ConsolidatedBusinessManager.getBusinessPerformanceReport(...)` where a missing return could lead to incorrect or empty results.
 
 ### 📚 Docs
-- Updated README/INSTALLATION with JAR guidance and new business GUI commands.
+- Updated README/INSTALLATION/QUICK_START to reference 1.0.5 artifacts and clarified admin vs player command visibility.
 
 ---
 
@@ -59,7 +55,7 @@ Compatibility: 1.20.4 – 1.21.x  |  Integrations: Vault, WorldGuard, McMMO, Luc
 
 **🆙 Update Instructions**:
 1. Stop your server
-2. Replace the old JAR with `DynamicJobsEconomy-1.0.4.jar`
+2. Replace the old JAR with `DynamicJobsEconomy-1.0.5.jar`
 3. Start your server
 4. Run `/djeconomy reload` (optional)
 
@@ -114,7 +110,7 @@ Compatibility: 1.20.4 – 1.21.x  |  Integrations: Vault, WorldGuard, McMMO, Luc
 ### **File Naming**:
 - Always include version in filename
 - The produced JAR is shaded by default
-- Example: `DynamicJobsEconomy-1.0.4.jar`
+- Example: `DynamicJobsEconomy-1.0.5.jar`
 
 ---
 

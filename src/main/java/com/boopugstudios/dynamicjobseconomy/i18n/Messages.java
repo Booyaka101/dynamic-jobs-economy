@@ -34,6 +34,11 @@ public class Messages {
     }
 
     public String getPrefix() {
+        // Prefer config.yml override for backward compatibility; fallback to messages.yml and default
+        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
+        if (fromConfig != null && !fromConfig.isEmpty()) {
+            return colorize(fromConfig);
+        }
         String raw = config.getString("messages.prefix", "§8[§6DynamicJobs§8] ");
         return colorize(raw);
     }

@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -32,6 +33,7 @@ public class ConsolidatedBusinessManager {
     // Revenue generation timers and tracking
     private final Map<Integer, Long> lastRevenueGeneration = new HashMap<>();
     private final Map<Integer, Double> dailyRevenueTargets = new HashMap<>();
+    private BukkitTask revenueTask;
     
     public ConsolidatedBusinessManager(DynamicJobsEconomy plugin) {
         this.plugin = plugin;
@@ -469,13 +471,6 @@ public class ConsolidatedBusinessManager {
         }
         
         return report;
-    }
-    
-    // ==================== MISSING METHODS FROM OLD MANAGERS ====================
-    
-    public void reload() {
-        loadBusinesses();
-        plugin.getLogger().info("Consolidated business manager reloaded");
     }
     
     // Position Management Extensions methods
@@ -988,7 +983,7 @@ public class ConsolidatedBusinessManager {
     private void notifyInsufficientFunds(Business business, double needed) {
         Player owner = plugin.getServer().getPlayer(business.getOwnerUUID());
         if (owner != null) {
-            String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+            String prefix = getPrefix();
             owner.sendMessage(prefix + "§cInsufficient funds for payroll! Need $" + String.format("%.2f", needed) + 
                 " but only have $" + String.format("%.2f", business.getBalance()));
         }
@@ -997,7 +992,7 @@ public class ConsolidatedBusinessManager {
     private void notifyPayrollSuccess(Business business, List<BusinessEmployee> employees, double total) {
         Player owner = plugin.getServer().getPlayer(business.getOwnerUUID());
         if (owner != null) {
-            String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+            String prefix = getPrefix();
             owner.sendMessage(prefix + "§aPayroll processed! Paid $" + String.format("%.2f", total) + 
                 " to " + employees.size() + " employees.");
         }
@@ -1006,7 +1001,7 @@ public class ConsolidatedBusinessManager {
         for (BusinessEmployee emp : employees) {
             Player employee = plugin.getServer().getPlayer(emp.getPlayerUUID());
             if (employee != null) {
-                String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                String prefix = getPrefix();
                 employee.sendMessage(prefix + "§aReceived salary: $" + String.format("%.2f", emp.getCurrentSalary()) + 
                     " from " + business.getName());
             }
@@ -1048,7 +1043,11 @@ public class ConsolidatedBusinessManager {
      * Start the automated revenue generation task
      */
     private void startRevenueGenerationTask() {
-        new BukkitRunnable() {
+        // Cancel existing task if present to avoid duplicates
+        if (revenueTask != null) {
+            try { revenueTask.cancel(); } catch (Throwable ignored) {}
+        }
+        revenueTask = new BukkitRunnable() {
             @Override
             public void run() {
                 generateAllBusinessRevenue();
@@ -1321,7 +1320,7 @@ public class ConsolidatedBusinessManager {
     private void notifyRevenueGenerated(Business business, double amount, BusinessRevenue.RevenueType type) {
         Player owner = plugin.getServer().getPlayer(business.getOwnerUUID());
         if (owner != null) {
-            String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+            String prefix = getPrefix();
             owner.sendMessage(prefix + "§a💰 Revenue Generated! §f$" + String.format("%.2f", amount) + 
                 " §7from " + type.getDisplayName() + " at " + business.getName());
         }
@@ -1722,5 +1721,84 @@ public class ConsolidatedBusinessManager {
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error initializing Minecraft-viable business tables", e);
         }
+    }
+    
+    // ==================== RELOAD SUPPORT ====================
+    /**
+     * Reload the business manager: cancel tasks, clear caches, reload from DB, and restart tasks.
+     */
+    public void reload() {
+        // 1) Cancel existing scheduled task
+        if (revenueTask != null) {
+            try { revenueTask.cancel(); } catch (Throwable t) {
+                plugin.getLogger().log(Level.WARNING, "Error cancelling revenue task during reload", t);
+            } finally {
+                revenueTask = null;
+            }
+        }
+
+        // 2) Clear caches
+        businessCache.clear();
+        businessContracts.clear();
+        businessRevenueModels.clear();
+        lastRevenueGeneration.clear();
+        dailyRevenueTargets.clear();
+        businessLocations.clear();
+        processingChains.clear();
+        constructionContracts.clear();
+
+        // 3) Reload data from DB
+        loadBusinesses();
+        loadRevenueModels();
+        // Precompute daily targets if possible
+        for (Integer businessId : businessCache.keySet()) {
+            try { calculateDailyRevenueTarget(businessId); } catch (Throwable ignored) {}
+        }
+
+        // 4) Restart scheduled tasks
+        startRevenueGenerationTask();
+
+        // 5) Log completion
+        plugin.getLogger().info("ConsolidatedBusinessManager reloaded.");
+    }
+
+    /**
+     * Populate in-memory revenue models from the businesses table, if present.
+     */
+    private void loadRevenueModels() {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT id, revenue_model FROM businesses";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int id = rs.getInt("id");
+                        String modelStr = rs.getString("revenue_model");
+                        if (modelStr != null && !modelStr.isEmpty()) {
+                            try {
+                                BusinessRevenueModel model = BusinessRevenueModel.valueOf(modelStr);
+                                businessRevenueModels.put(id, model);
+                            } catch (IllegalArgumentException ignored) {
+                                // Unknown model in DB; fall back to default STARTUP
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Error loading business revenue models; defaulting to STARTUP where unset", e);
+        }
+    }
+
+    /**
+     * Centralized prefix retrieval for player-facing messages.
+     */
+    private String getPrefix() {
+        try {
+            if (plugin.getMessages() != null) {
+                String p = plugin.getMessages().getPrefix();
+                if (p != null && !p.isEmpty()) return p;
+            }
+        } catch (Throwable ignored) {}
+        return "\u00a78[\u00a76DynamicJobs\u00a78] ";
     }
 }

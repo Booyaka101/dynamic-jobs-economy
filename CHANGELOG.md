@@ -14,6 +14,21 @@
 ### 📚 Docs
 - 
 
+## Version 1.0.5 - "Polish & Performance Reporting Fix" (August 2025)
+
+### ✨ Improvements
+- Minor polish across business command help and GUI documentation.
+
+### 🐛 Bug Fixes
+- Fixed a critical bug in `ConsolidatedBusinessManager.getBusinessPerformanceReport(...)` where a missing return could lead to incorrect or empty results.
+
+### 🧪 Testing
+- Verified full compile via Maven and prepared test plan for GUI navigation and reload behavior (no duplicate revenue tasks).
+
+### 📚 Docs
+- Updated `README.md` to reference 1.0.5 artifacts and clarified admin vs player command visibility.
+- Updated `ROADMAP.md` current version to 1.0.5 and rolled near-term targets forward.
+
 ## Version 1.0.4.1 - "GUI Tooltip Hotfix, and GUI Protection" (August 2025)
 
 ### 🐛 Bug Fixes

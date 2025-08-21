@@ -297,109 +297,66 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     }
     
     public void onReload() {
+        // Reload configs
         reloadConfig();
         if (messages != null) {
             messages.load();
         }
-        
-        if (jobManager != null) {
-            jobManager.reload();
-        }
-        
-        if (consolidatedBusinessManager != null) {
-            consolidatedBusinessManager.reload();
-        }
-        
-        if (gigManager != null) {
-            gigManager.reload();
-        }
-        
-        getLogger().info("Dynamic Jobs & Economy Pro reloaded successfully!");
+        // Reload managers
+        if (jobManager != null) jobManager.reload();
+        if (consolidatedBusinessManager != null) consolidatedBusinessManager.reload();
+        if (gigManager != null) gigManager.reload();
+        getLogger().info("Reload complete.");
     }
-    
+
     private boolean validateConfiguration() {
         try {
             getLogger().info("Validating configuration...");
-            
-            // Validate economy settings
+            // Economy
             double startingMoney = getConfig().getDouble("economy.starting_money", 1000.0);
             double maxMoney = getConfig().getDouble("economy.max_money", 10000000.0);
             if (startingMoney < 0 || maxMoney <= startingMoney) {
-                getLogger().severe("Invalid economy settings: starting_money must be >= 0 and max_money must be > starting_money");
+                getLogger().severe("Invalid economy settings: starting_money must be >= 0 and max_money > starting_money");
                 return false;
             }
-            
-            // Validate job settings
-            double jobCooldown = getConfig().getDouble("jobs.cooldown_seconds", 3.0);
-            if (jobCooldown < 0) {
-                getLogger().severe("Invalid job cooldown: must be >= 0");
-                return false;
-            }
-            
-            // Validate business settings
+            // Business
             double businessCreationCost = getConfig().getDouble("business.creation_cost", 1000.0);
             double defaultSalary = getConfig().getDouble("business.default_salary", 100.0);
             if (businessCreationCost < 0 || defaultSalary < 0) {
                 getLogger().severe("Invalid business settings: costs and salaries must be >= 0");
                 return false;
             }
-            
-            // Validate gig settings
-            double gigCreationCost = getConfig().getDouble("gigs.creation_cost", 50.0);
+            // Gigs
+            double gigPostingCost = getConfig().getDouble("gigs.posting_cost", 50.0);
             double commissionRate = getConfig().getDouble("gigs.commission_rate", 0.05);
             double cancellationPenalty = getConfig().getDouble("gigs.cancellation_penalty", 0.1);
-            if (gigCreationCost < 0 || commissionRate < 0 || commissionRate > 1 || cancellationPenalty < 0 || cancellationPenalty > 1) {
-                getLogger().severe("Invalid gig settings: costs must be >= 0, rates must be between 0-1");
+            if (gigPostingCost < 0 || commissionRate < 0 || commissionRate > 1 || cancellationPenalty < 0 || cancellationPenalty > 1) {
+                getLogger().severe("Invalid gig settings: costs must be >= 0, rates 0-1");
                 return false;
             }
-            
-            // Validate admin settings
-            double adminThreshold = getConfig().getDouble("admin.large_transaction_threshold", 100000.0);
-            int confirmationTimeout = getConfig().getInt("admin.confirmation_timeout_seconds", 30);
-            if (adminThreshold <= 0 || confirmationTimeout <= 0) {
-                getLogger().severe("Invalid admin settings: threshold and timeout must be > 0");
+            // Admin confirmation (economy)
+            double adminThreshold = getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+            int expirySeconds = getConfig().getInt("economy.admin_confirmation.expiry_seconds", 30);
+            if (adminThreshold <= 0 || expirySeconds <= 0) {
+                getLogger().severe("Invalid admin confirmation settings: threshold and expiry_seconds must be > 0");
                 return false;
             }
-            
-            // Validate database settings
+            // Database
             String dbType = getConfig().getString("database.type", "sqlite").toLowerCase();
             if (!dbType.equals("sqlite") && !dbType.equals("mysql") && !dbType.equals("mongodb")) {
-                getLogger().severe("Invalid database type: must be 'sqlite', 'mysql', or 'mongodb'");
+                getLogger().severe("Invalid database.type. Must be sqlite, mysql, or mongodb.");
                 return false;
             }
-            
-            getLogger().info("✓ Configuration validation passed!");
+            getLogger().info("\u2713 Configuration validation passed!");
             return true;
-            
         } catch (Exception e) {
-            getLogger().severe("Configuration validation failed with exception: " + e.getMessage());
-            e.printStackTrace();
+            getLogger().severe("Configuration validation failed: " + e.getMessage());
             return false;
         }
     }
-    
+
     private void displayFirstTimeSetup() {
-        getLogger().info("\n" +
-            "🎉 WELCOME TO BOOPUG STUDIOS! 🐶\n" +
-            "\n" +
-            "This appears to be your first time running Dynamic Jobs & Economy Pro!\n" +
-            "\n" +
-            "✅ AUTOMATIC SETUP COMPLETE:\n" +
-            "   • Database initialized (SQLite)\n" +
-            "   • Default configuration created\n" +
-            "   • All job types loaded\n" +
-            "   • Economy system ready\n" +
-            "\n" +
-            "🚀 YOUR PLUGIN IS READY TO USE!\n" +
-            "\n" +
-            "📚 QUICK START:\n" +
-            "   • Players can use /jobs to get started\n" +
-            "   • Use /djeconomy status to check everything\n" +
-            "   • Check INSTALLATION.md for detailed setup\n" +
-            "\n" +
-            "🔧 OPTIONAL: Edit config.yml to customize settings\n" +
-            "\n" +
-            "Thank you for choosing BooPug Studios! 🎉\n");
+        getLogger().info("First-time setup detected. Default configuration created. See INSTALLATION.md for guidance.");
     }
     
     private void sendAdminWelcomeMessage() {

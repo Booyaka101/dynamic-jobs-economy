@@ -1,16 +1,12 @@
-# 🎉 Dynamic Jobs & Economy Pro v1.0.4 — Admin Economy Fixes & i18n
+# 🎉 Dynamic Jobs & Economy Pro v1.0.5 — Polish & Performance Reporting Fix
 
-A quality-of-life update focused on safer admin economy actions, better i18n consistency, and faster access to the Business GUI.
+A small polish release that refines docs and fixes the business performance reporting output.
 
 ## ✨ Improvements
-- Prefix precedence in admin messages now respects `config.yml` first, then `messages.yml`, then defaults; reloaded on `/djeconomy reload`.
-- Added `/business gui` and `/business menu` helpers to open the business GUI faster, with tab completion. (perm: `djeconomy.gui.access`)
+- Minor polish across business command help and GUI documentation.
 
 ## 🐛 Bug Fixes
-- Offline player deposits now correctly use `EconomyManager.depositPlayer(...)` for offline targets.
-- Confirmation threshold/expiry now read with defaults using the correct `FileConfiguration#get*` overloads.
-- Added guard for missing economy manager with a friendly `admin.economy_unavailable` message.
-- Aligned i18n keys and placeholders across give/take/set, confirm prompts, expiry, offline flow, and reload success.
+- Fixed a critical bug in `ConsolidatedBusinessManager.getBusinessPerformanceReport(...)` where a missing return could lead to incorrect or empty results.
 
 ## 📚 Docs
 - Updated README/INSTALLATION with JAR guidance and new business GUI commands.
@@ -23,11 +19,11 @@ A quality-of-life update focused on safer admin economy actions, better i18n con
 - Databases: SQLite, MySQL, MongoDB
 
 ## ⬇️ Download
-- Use the main JAR: `DynamicJobsEconomy-1.0.4.jar`
+- Use the main JAR: `DynamicJobsEconomy-1.0.5.jar`
 
 ## 🆙 How to Update
 1. Stop your server
-2. Replace the old JAR with `DynamicJobsEconomy-1.0.4.jar`
+2. Replace the old JAR with `DynamicJobsEconomy-1.0.5.jar`
 3. Start your server
 4. (Optional) `/djeconomy reload`
 

@@ -496,110 +496,191 @@ public class BusinessGUI implements Listener {
      */
     public void cleanupInactiveSessions() {
         long currentTime = System.currentTimeMillis();
-        activeSessions.entrySet().removeIf(entry -> 
+        activeSessions.entrySet().removeIf(entry ->
                 currentTime - entry.getValue().getOpenTime() > 300000); // 5 minutes
     }
-    
+
     /**
-     * Handle employee management GUI clicks
+     * Handle employee management menu clicks (top-level and per-business)
      */
     private void handleEmployeeManagementClick(Player player, GUISession session, String itemName, int slot) {
+        // Global navigation
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
             return;
         }
-        
-        Business business = session.getCurrentBusiness();
-        if (business == null) {
-            player.sendMessage("§cError: No business selected.");
+
+        Business current = session.getCurrentBusiness();
+
+        // Top-level Employee Management (list of businesses)
+        if (current == null) {
+            if ("Hire Employee".equals(itemName)) {
+                player.closeInventory();
+                player.sendMessage("§6Use: §f/business hire <player> <position> <salary>");
+                return;
+            }
+            if (slot < 21) {
+                List<Business> businesses = businessManager.getPlayerBusinesses(player);
+                if (slot < businesses.size()) {
+                    openEmployeeManagementGUI(player, businesses.get(slot));
+                }
+            }
             return;
         }
-        
+
+        // Per-business Employee Management
+        if ("Back to Business Menu".equals(itemName)) {
+            openBusinessDetails(player, current);
+            return;
+        }
+        if ("Back to Employees".equals(itemName)) {
+            openEmployeeManagementGUI(player, current);
+            return;
+        }
         if (itemName.startsWith("Employee: ")) {
-            String employeeName = itemName.substring(10);
-            openEmployeeDetailsGUI(player, business, employeeName);
-        } else if (itemName.equals("Add Employee")) {
+            String employeeName = itemName.substring("Employee: ".length());
+            openEmployeeDetailsGUI(player, current, employeeName);
+            return;
+        }
+        if ("Add Employee".equals(itemName)) {
             player.closeInventory();
-            player.sendMessage("§6Use command: §f/business hire <player> <position> <salary>");
-        } else if (itemName.equals("Manage Positions")) {
-            openPositionManagementGUI(player, business);
+            player.sendMessage("§6Use: §f/business hire <player> <position> <salary>");
+            return;
+        }
+        if ("Manage Positions".equals(itemName)) {
+            openPositionManagementGUI(player, current);
         }
     }
-    
+
     /**
-     * Handle revenue overview GUI clicks
+     * Handle revenue overview clicks (top-level and per-business)
      */
     private void handleRevenueOverviewClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
-        } else if ("Back to Business Menu".equals(itemName)) {
-            Business business = session.getCurrentBusiness();
-            if (business != null) {
-                openBusinessDetails(player, business);
-            } else {
-                openMainMenu(player);
+            return;
+        }
+        Business current = session.getCurrentBusiness();
+        if (current == null) {
+            // Top-level Revenue list
+            if (slot < 21) {
+                List<Business> businesses = businessManager.getPlayerBusinesses(player);
+                if (slot < businesses.size()) {
+                    openRevenueOverviewGUI(player, businesses.get(slot));
+                }
+            }
+        } else {
+            if ("Back to Business Menu".equals(itemName)) {
+                openBusinessDetails(player, current);
             }
         }
     }
-    
+
     /**
-     * Handle locations menu GUI clicks
+     * Handle locations menu clicks (top-level and per-business)
      */
     private void handleLocationsMenuClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
-        } else if ("Back to Business Menu".equals(itemName)) {
-            Business business = session.getCurrentBusiness();
-            if (business != null) {
-                openBusinessDetails(player, business);
-            } else {
-                openMainMenu(player);
+            return;
+        }
+        Business current = session.getCurrentBusiness();
+        if (current == null) {
+            if ("Add New Location".equals(itemName)) {
+                player.closeInventory();
+                player.sendMessage("§6Use: §f/business add-location <type> <region>");
+                return;
+            }
+            if (slot < 21) {
+                List<Business> businesses = businessManager.getPlayerBusinesses(player);
+                if (slot < businesses.size()) {
+                    openLocationManagementGUI(player, businesses.get(slot));
+                }
+            }
+        } else {
+            if ("Back to Business Menu".equals(itemName)) {
+                openBusinessDetails(player, current);
+                return;
+            }
+            if ("Add Location".equals(itemName)) {
+                player.closeInventory();
+                player.sendMessage("§6Use: §f/business add-location <type> <region>");
             }
         }
     }
-    
+
     /**
-     * Handle processing chains GUI clicks
+     * Handle processing chains clicks (top-level and per-business)
      */
     private void handleProcessingChainsClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
-        } else if ("Back to Business Menu".equals(itemName)) {
-            Business business = session.getCurrentBusiness();
-            if (business != null) {
-                openBusinessDetails(player, business);
-            } else {
-                openMainMenu(player);
+            return;
+        }
+        Business current = session.getCurrentBusiness();
+        if (current == null) {
+            if ("Add Processing Chain".equals(itemName)) {
+                player.closeInventory();
+                player.sendMessage("§6Use: §f/business add-processing <type>");
+                return;
+            }
+            if (slot < 21) {
+                List<Business> businesses = businessManager.getPlayerBusinesses(player);
+                if (slot < businesses.size()) {
+                    openProcessingChainGUI(player, businesses.get(slot));
+                }
+            }
+        } else {
+            if ("Back to Business Menu".equals(itemName)) {
+                openBusinessDetails(player, current);
+                return;
+            }
+            if ("Add Processing Chain".equals(itemName)) {
+                player.closeInventory();
+                player.sendMessage("§6Use: §f/business add-processing <type>");
             }
         }
     }
-    
+
     /**
-     * Handle construction contracts GUI clicks
+     * Handle construction contracts clicks
      */
     private void handleConstructionContractsClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
-        } else if ("Back to Business Menu".equals(itemName)) {
-            Business business = session.getCurrentBusiness();
-            if (business != null) {
-                openBusinessDetails(player, business);
-            } else {
-                openMainMenu(player);
+            return;
+        }
+        if ("New Contract".equals(itemName)) {
+            player.closeInventory();
+            player.performCommand("gigs list");
+            return;
+        }
+        if (slot < 21) {
+            List<Business> businesses = businessManager.getPlayerBusinesses(player);
+            if (slot < businesses.size()) {
+                player.closeInventory();
+                player.performCommand("gigs mine");
             }
         }
     }
-    
+
     /**
-     * Handle create business GUI clicks
+     * Handle create business menu clicks
      */
     private void handleCreateBusinessClick(Player player, GUISession session, String itemName) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
-        } else if (itemName.contains("Business")) {
+            return;
+        }
+        if ("Instructions".equals(itemName)) {
+            // No-op
+            return;
+        }
+        if (itemName.endsWith(" Business")) {
+            // Derive type from first word
+            String type = itemName.split(" ")[0].toLowerCase();
             player.closeInventory();
-            player.sendMessage("§6To create a business, use: §f/business create <name> <type>");
-            player.sendMessage("§7Available types: restaurant, shop, factory, farm, construction, mining, technology, transportation");
+            player.sendMessage("§6Use: §f/business create <name> " + type);
         }
     }
     

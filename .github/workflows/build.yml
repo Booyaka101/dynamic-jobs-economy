@@ -11,6 +11,7 @@ jobs:
   build:
     name: Build (matrix)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -34,16 +35,28 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.profile }}" = "default" ]; then
-            mvn -B -DskipTests=false package
+            timeout 30m mvn -B -DskipTests=false package
           else
-            mvn -B -P ${{ matrix.profile }} -DskipTests=false package
+            timeout 30m mvn -B -P ${{ matrix.profile }} -DskipTests=false package
           fi
 
       - name: Record JAR size
         id: size
         shell: bash
         run: |
-          JAR=$(ls -1 target/DynamicJobsEconomy-*.jar | head -n1)
+          case "${{ matrix.profile }}" in
+            default|spigot-ultra-mysql|spigot-linux-sqlite)
+              PATTERN="target/DynamicJobsEconomy-*.jar"
+              ;;
+            spigot-ultra)
+              PATTERN="target/DynamicJobsEconomy-*-spigot-ultra.jar"
+              ;;
+            spigot-lite)
+              PATTERN="target/DynamicJobsEconomy-*-spigot-lite.jar"
+              ;;
+          esac
+          # Prefer classifier-specific jar when applicable and avoid original- backup jars
+          JAR=$(ls -1 $PATTERN 2>/dev/null | grep -v "/original-" | head -n1)
           if [ -z "$JAR" ]; then
             echo "No JAR found in target/"
             exit 1
@@ -72,6 +85,7 @@ jobs:
   integration-tests:
     name: Integration Tests (Testcontainers)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: build
     steps:
       - name: Checkout
@@ -85,4 +99,4 @@ jobs:
           cache: maven
 
       - name: Run database integration tests (Testcontainers)
-        run: mvn -B -P integration-tests -DskipTests=false test
+        run: timeout 40m mvn -B -P integration-tests -DskipTests=false test

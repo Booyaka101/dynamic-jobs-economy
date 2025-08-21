@@ -13,6 +13,9 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -203,6 +206,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 break;
             case "businessinfo":
                 handleBusinessInfo(sender, args, prefix);
+                break;
+            case "doctor":
+                handleDoctor(sender, prefix);
                 break;
                 
             default:
@@ -476,6 +482,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void showAdminHelp(CommandSender sender, String prefix) {
         sender.sendMessage(msg("admin.help.header", null, "§8§m----------§r §6Admin Help §8§m----------"));
         sender.sendMessage(msg("admin.help.reload", null, "§f/djeconomy reload §7- Reload configuration"));
+        sender.sendMessage(msg("admin.help.doctor", null, "§f/djeconomy doctor §7- Run system diagnostics"));
         sender.sendMessage(msg("admin.help.setlevel", null, "§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)"));
         sender.sendMessage(msg("admin.help.getlevel", null, "§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)"));
         sender.sendMessage(msg("admin.help.resetlevel", null, "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"));
@@ -537,7 +544,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> base = Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
+            List<String> base = Arrays.asList("reload", "doctor", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
             String pref = args[0].toLowerCase();
             return base.stream()
                 .filter(s -> s.toLowerCase().startsWith(pref))
@@ -592,18 +599,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private String getPrefix() {
-        // Prefer config.yml for backward compatibility; fallback to messages.yml and default.
-        // First try with null default (so tests stubbing isNull() match)
-        String fromConfig = plugin.getConfig().getString("messages.prefix", null);
-        if (fromConfig == null || fromConfig.isEmpty()) {
-            // Then try with non-null default (so tests stubbing anyString() match)
-            fromConfig = plugin.getConfig().getString("messages.prefix", "");
-        }
-        if (fromConfig != null && !fromConfig.isEmpty()) return fromConfig;
+        // Centralized prefix retrieval via Messages; it already prefers config.yml override then messages.yml
         try {
             if (plugin.getMessages() != null) {
-                String fromMessages = plugin.getMessages().getPrefix();
-                if (fromMessages != null && !fromMessages.isEmpty()) return fromMessages;
+                String p = plugin.getMessages().getPrefix();
+                if (p != null && !p.isEmpty()) return p;
             }
         } catch (Throwable ignored) {}
         return "§8[§6DynamicJobs§8] ";
@@ -629,6 +629,45 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return out;
     }
 
+    /**
+     * Helper to send a standardized diagnostic check line (PASS/WARN/FAIL) with optional tip, and log to console.
+     */
+    private void sendDiagnosticCheck(CommandSender sender, String name, String statusKey, String tipSuggestion) {
+        // Localize status label
+        String statusLabel;
+        if ("pass".equalsIgnoreCase(statusKey)) {
+            statusLabel = msg("admin.doctor.checks.status.pass", null, "§aPASS");
+        } else if ("warn".equalsIgnoreCase(statusKey)) {
+            statusLabel = msg("admin.doctor.checks.status.warn", null, "§eWARN");
+        } else {
+            statusLabel = msg("admin.doctor.checks.status.fail", null, "§cFAIL");
+            statusKey = "fail"; // normalize
+        }
+
+        Map<String, String> ph = new HashMap<>();
+        ph.put("name", name);
+        ph.put("status", statusLabel);
+        sender.sendMessage(msg("admin.doctor.checks.item", ph, "§7%name%: %status%"));
+
+        if (tipSuggestion != null && !tipSuggestion.isEmpty()) {
+            Map<String, String> tph = new HashMap<>();
+            tph.put("suggestion", tipSuggestion);
+            sender.sendMessage(msg("admin.doctor.checks.tip", tph, "§8Tip: §7%suggestion%"));
+        }
+
+        // Also mirror to console for visibility
+        try {
+            String plain = name + ": " + statusLabel.replace('§', '&');
+            if ("fail".equalsIgnoreCase(statusKey)) {
+                plugin.getLogger().severe(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
+            } else if ("warn".equalsIgnoreCase(statusKey)) {
+                plugin.getLogger().warning(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
+            } else {
+                plugin.getLogger().info(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
+            }
+        } catch (Throwable ignored) {}
+    }
+
     private boolean isSubAllowed(CommandSender sender, String sub) {
         // In tests, sender may be null; allow all suggestions in that case
         if (sender == null) return true;
@@ -642,6 +681,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "reload":
                 return "djeconomy.system.reload";
+            case "doctor":
+                return "djeconomy.system.doctor";
             case "economy":
             case "confirm":
                 return "djeconomy.admin.economy";
@@ -664,6 +705,246 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             default:
                 return null;
         }
+    }
+
+    private void handleDoctor(CommandSender sender, String prefix) {
+        sender.sendMessage(msg("admin.doctor.header", null, "§6Dynamic Jobs & Economy - System Doctor"));
+
+        // Basic environment info
+        String version = "unknown";
+        try {
+            if (plugin.getDescription() != null) {
+                version = plugin.getDescription().getVersion();
+            }
+        } catch (Throwable ignored) {}
+        Map<String, String> ph = new HashMap<>();
+        ph.put("version", version);
+        sender.sendMessage(msg("admin.doctor.env.version", ph, "§7Plugin version: §f%version%"));
+        try {
+            ph = new HashMap<>();
+            ph.put("server", Bukkit.getVersion());
+            sender.sendMessage(msg("admin.doctor.env.server", ph, "§7Server: §f%server%"));
+        } catch (Throwable ignored) {}
+        try {
+            ph = new HashMap<>();
+            ph.put("players", String.valueOf(getOnlinePlayers().size()));
+            sender.sendMessage(msg("admin.doctor.env.players", ph, "§7Online players: §f%players%"));
+        } catch (Throwable ignored) {}
+
+        // Server performance (Paper only; via reflection when available)
+        try {
+            Object server = Bukkit.getServer();
+            java.lang.reflect.Method getTPS = server.getClass().getMethod("getTPS");
+            double[] tps = (double[]) getTPS.invoke(server);
+            ph = new HashMap<>();
+            ph.put("tps1", String.format("%.2f", tps.length > 0 ? tps[0] : 20.0));
+            ph.put("tps5", String.format("%.2f", tps.length > 1 ? tps[1] : 20.0));
+            ph.put("tps15", String.format("%.2f", tps.length > 2 ? tps[2] : 20.0));
+            sender.sendMessage(msg("admin.doctor.perf.tps", ph, "§7TPS: §f%tps1%§7, §f%tps5%§7, §f%tps15%"));
+        } catch (Throwable ignored) {}
+        try {
+            Object server = Bukkit.getServer();
+            java.lang.reflect.Method getMspt = server.getClass().getMethod("getAverageTickTime");
+            double mspt = (double) getMspt.invoke(server);
+            ph = new HashMap<>();
+            ph.put("mspt", String.format("%.2f", mspt));
+            sender.sendMessage(msg("admin.doctor.perf.mspt", ph, "§7MSPT: §f%mspt%"));
+        } catch (Throwable ignored) {}
+
+        // Database health check
+        String dbType = "unknown";
+        boolean dbOk = false;
+        long start = nowMillis();
+        try {
+            if (plugin.getDatabaseManager() != null) {
+                dbType = plugin.getDatabaseManager().getDatabaseType();
+                try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+                    if (conn != null) {
+                        try (PreparedStatement ps = conn.prepareStatement("SELECT 1")) {
+                            dbOk = ps.execute();
+                        }
+                    }
+                }
+            }
+        } catch (SQLException ignored) {
+            dbOk = false;
+        }
+        long dur = nowMillis() - start;
+        ph = new HashMap<>();
+        ph.put("type", dbType);
+        ph.put("status", dbOk ? "§aOK" : "§cERROR");
+        ph.put("ms", String.valueOf(dur));
+        sender.sendMessage(msg("admin.doctor.db.summary", ph, "§7Database: §f%type% §7- %status% §8(%ms%ms)"));
+
+        // Database pool stats (if available)
+        if (plugin.getDatabaseManager() != null) {
+            int active = 0, pooled = 0, max = 0, min = 0;
+            try {
+                active = plugin.getDatabaseManager().getActiveConnectionsCount();
+                pooled = plugin.getDatabaseManager().getPoolSize();
+                max = plugin.getDatabaseManager().getMaxPoolSize();
+                min = plugin.getDatabaseManager().getMinPoolSize();
+            } catch (Throwable ignored) {}
+            ph = new HashMap<>();
+            ph.put("active", String.valueOf(active));
+            ph.put("pool", String.valueOf(pooled));
+            ph.put("max", String.valueOf(max));
+            ph.put("min", String.valueOf(min));
+            sender.sendMessage(msg("admin.doctor.db.pool", ph, "§7DB Pool: §factive=%active%§7, pooled=%pool%§7, min=%min%§7, max=%max%"));
+        }
+
+        // SQLite file info (if applicable)
+        if ("sqlite".equalsIgnoreCase(dbType)) {
+            try {
+                File dbFile = new File(plugin.getDataFolder(), "database.db");
+                ph = new HashMap<>();
+                ph.put("path", dbFile.getAbsolutePath());
+                sender.sendMessage(msg("admin.doctor.sqlite.path", ph, "§7SQLite file: §f%path%"));
+                if (dbFile.exists()) {
+                    long bytes = dbFile.length();
+                    double mb = bytes / 1024.0 / 1024.0;
+                    ph = new HashMap<>();
+                    ph.put("size", String.format("%.2fMB", mb));
+                    sender.sendMessage(msg("admin.doctor.sqlite.size", ph, "§7SQLite size: §f%size%"));
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        // Economy integration check
+        boolean vaultPref = false;
+        try { vaultPref = plugin.getConfig().getBoolean("integrations.vault.use_vault_economy", true); } catch (Throwable ignored) {}
+        boolean vaultEnabled = plugin.getEconomyManager() != null && plugin.getEconomyManager().isVaultEnabled();
+        if (vaultEnabled) {
+            String provider = plugin.getEconomyManager().getVaultProviderName();
+            ph = new HashMap<>();
+            ph.put("provider", provider != null ? provider : "Unknown");
+            sender.sendMessage(msg("admin.doctor.economy.vault", ph, "§7Economy: §fVault §7(Provider: §f%provider%§7) - §aENABLED"));
+        } else {
+            String def = vaultPref
+                ? "§7Economy: §fInternal §7- §eUsing internal (Vault preferred but not available)"
+                : "§7Economy: §fInternal §7- §aENABLED";
+            sender.sendMessage(msg(vaultPref ? "admin.doctor.economy.internal_preferred" : "admin.doctor.economy.internal", null, def));
+        }
+
+        // Managers presence
+        boolean ok = true;
+        if (plugin.getEconomyManager() == null) { ph = new HashMap<>(); ph.put("name", "EconomyManager"); sender.sendMessage(msg("admin.doctor.manager_missing", ph, "§7%name%: §cMISSING")); ok = false; }
+        if (plugin.getDatabaseManager() == null) { ph = new HashMap<>(); ph.put("name", "DatabaseManager"); sender.sendMessage(msg("admin.doctor.manager_missing", ph, "§7%name%: §cMISSING")); ok = false; }
+
+        // Runtime info
+        try {
+            ph = new HashMap<>();
+            ph.put("java", System.getProperty("java.version", "unknown"));
+            sender.sendMessage(msg("admin.doctor.runtime.java", ph, "§7Java: §f%java%"));
+        } catch (Throwable ignored) {}
+        try {
+            Runtime rt = Runtime.getRuntime();
+            long total = rt.totalMemory();
+            long free = rt.freeMemory();
+            long used = total - free;
+            long max = rt.maxMemory();
+            ph = new HashMap<>();
+            ph.put("used", String.valueOf(used / (1024 * 1024)));
+            ph.put("total", String.valueOf(total / (1024 * 1024)));
+            ph.put("max", String.valueOf(max / (1024 * 1024)));
+            sender.sendMessage(msg("admin.doctor.runtime.memory", ph, "§7Memory: §f%used%MB§7/%total%MB (max %max%MB)"));
+        } catch (Throwable ignored) {}
+
+        // Config highlights
+        try {
+            ph = new HashMap<>();
+            ph.put("vault_prefer", String.valueOf(vaultPref));
+            sender.sendMessage(msg("admin.doctor.config.vault_prefer", ph, "§7Config: §fintegrations.vault.use_vault_economy=%vault_prefer%"));
+        } catch (Throwable ignored) {}
+
+        // --- Detailed validation checks (PASS/WARN/FAIL) ---
+        try {
+            // 1) Database Connectivity
+            if (plugin.getDatabaseManager() == null) {
+                sendDiagnosticCheck(sender, "Database Connectivity", "fail", "DatabaseManager unavailable. Check database.type in config.yml and restart.");
+            } else if (dbOk) {
+                sendDiagnosticCheck(sender, "Database Connectivity", "pass", null);
+            } else {
+                sendDiagnosticCheck(sender, "Database Connectivity", "fail", "Cannot query database. Verify credentials/URL and that the server is reachable.");
+            }
+
+            // 2) Database Latency (SELECT 1 duration)
+            if (dbOk) {
+                if (dur < 200) {
+                    sendDiagnosticCheck(sender, "Database Latency", "pass", null);
+                } else if (dur < 1000) {
+                    sendDiagnosticCheck(sender, "Database Latency", "warn", "High latency (%d ms). Consider tuning DB or network.".replace("%d", String.valueOf(dur)));
+                } else {
+                    sendDiagnosticCheck(sender, "Database Latency", "warn", "Very high latency (%d ms). Consider switching to MySQL or optimizing storage/network.".replace("%d", String.valueOf(dur)));
+                }
+            }
+
+            // 3) MySQL Config Keys (if mysql)
+            if ("mysql".equalsIgnoreCase(dbType)) {
+                String host = plugin.getConfig().getString("database.mysql.host", "");
+                String dbName = plugin.getConfig().getString("database.mysql.database", "");
+                String username = plugin.getConfig().getString("database.mysql.username", "");
+                int port = 0;
+                try { port = plugin.getConfig().getInt("database.mysql.port", 0); } catch (Throwable ignored2) {}
+                List<String> missing = new ArrayList<>();
+                if (host == null || host.trim().isEmpty()) missing.add("host");
+                if (dbName == null || dbName.trim().isEmpty()) missing.add("database");
+                if (username == null || username.trim().isEmpty()) missing.add("username");
+                if (port <= 0) missing.add("port");
+                if (missing.isEmpty()) {
+                    sendDiagnosticCheck(sender, "MySQL Config", "pass", null);
+                } else {
+                    sendDiagnosticCheck(sender, "MySQL Config", "fail", "Missing/invalid keys: " + String.join(", ", missing) + ". Set database.mysql.* in config.yml.");
+                }
+            }
+
+            // 4) SQLite File Presence (if sqlite)
+            if ("sqlite".equalsIgnoreCase(dbType)) {
+                try {
+                    File dbFile = new File(plugin.getDataFolder(), "database.db");
+                    if (dbFile.exists() && dbFile.length() >= 0) {
+                        sendDiagnosticCheck(sender, "SQLite File", "pass", null);
+                    } else {
+                        sendDiagnosticCheck(sender, "SQLite File", "fail", "database.db not found. Ensure plugin can write to its data folder.");
+                    }
+                } catch (Throwable t) {
+                    sendDiagnosticCheck(sender, "SQLite File", "fail", "Could not inspect SQLite file: " + t.getMessage());
+                }
+            }
+
+            // 5) Economy Integration vs Preference
+            if (plugin.getEconomyManager() == null) {
+                sendDiagnosticCheck(sender, "Economy Manager", "fail", "Economy system unavailable. If using Vault, install Vault and an economy provider; otherwise use internal economy.");
+            } else if (vaultPref) {
+                if (vaultEnabled) {
+                    sendDiagnosticCheck(sender, "Economy Integration (Vault)", "pass", null);
+                } else {
+                    sendDiagnosticCheck(sender, "Economy Integration (Vault)", "warn", "Vault preferred but not enabled. Install/enable Vault and a provider.");
+                }
+            } else {
+                sendDiagnosticCheck(sender, "Economy Integration (Internal)", "pass", null);
+            }
+
+            // 6) Admin Confirmation Settings
+            double threshold = -1.0;
+            int expiry = -1;
+            try { threshold = plugin.getConfig().getDouble("economy.admin_confirmation.threshold", -1.0); } catch (Throwable ignored2) {}
+            try { expiry = plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", -1); } catch (Throwable ignored2) {}
+            if (threshold > 0) {
+                sendDiagnosticCheck(sender, "Admin Confirmation Threshold", "pass", null);
+            } else {
+                sendDiagnosticCheck(sender, "Admin Confirmation Threshold", "warn", "Set economy.admin_confirmation.threshold to a positive number to avoid accidental large payouts.");
+            }
+            if (expiry > 0) {
+                sendDiagnosticCheck(sender, "Admin Confirmation Expiry", "pass", null);
+            } else {
+                sendDiagnosticCheck(sender, "Admin Confirmation Expiry", "warn", "Set economy.admin_confirmation.expiry_seconds to a positive number (e.g., 30).");
+            }
+        } catch (Throwable ignored) {}
+
+        // Summary
+        sender.sendMessage(msg(ok && dbOk ? "admin.doctor.summary.ok" : "admin.doctor.summary.issues", null,
+            ok && dbOk ? "§aAll critical systems are operational." : "§eDiagnostics complete. See above for issues."));
     }
 
     private void handleBusinessInfo(CommandSender sender, String[] args, String prefix) {

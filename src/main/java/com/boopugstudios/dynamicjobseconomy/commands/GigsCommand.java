@@ -29,7 +29,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
         }
         
         Player player = (Player) sender;
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DynamicJobs§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length == 0) {
             showGigsHelp(player, prefix);
@@ -84,7 +84,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleListGigs(Player player) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         List<Gig> openGigs = plugin.getGigManager().getOpenGigs();
         
         if (openGigs.isEmpty()) {
@@ -101,7 +101,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleCreateGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 4) {
             player.sendMessage(prefix + "§cUsage: /gigs create <title> <payment> <description>");
@@ -136,7 +136,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleAcceptGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 2) {
             player.sendMessage(prefix + "§cUsage: /gigs accept <gig_id>");
@@ -159,7 +159,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleCompleteGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 2) {
             player.sendMessage(prefix + "§cUsage: /gigs complete <gig_id>");
@@ -182,7 +182,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleApproveGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 2) {
             player.sendMessage(prefix + "§cUsage: /gigs approve <gig_id>");
@@ -205,7 +205,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleRejectGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 2) {
             player.sendMessage(prefix + "§cUsage: /gigs reject <gig_id> [reason]");
@@ -237,7 +237,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleCancelGig(Player player, String[] args) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length < 2) {
             player.sendMessage(prefix + "§cUsage: /gigs cancel <gig_id>");
@@ -260,7 +260,7 @@ public class GigsCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleMyGigs(Player player) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         List<Gig> playerGigs = plugin.getGigManager().getPlayerGigs(player);
         
         if (playerGigs.isEmpty()) {

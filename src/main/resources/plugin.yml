@@ -240,6 +240,7 @@ permissions:
       djeconomy.contract.accept: true
       djeconomy.contract.complete: true
       djeconomy.contract.cancel: true
+      djeconomy.contract.view: true
 
   djeconomy.contract.create:
     description: Create construction contracts
@@ -262,6 +263,9 @@ permissions:
   djeconomy.contract.cancel:
     description: Cancel construction contracts
     default: true
+  djeconomy.contract.view:
+    description: View available contracts and gigs
+    default: true
 
   # GUI Interface
   djeconomy.gui.*:
@@ -276,6 +280,31 @@ permissions:
     default: true
   djeconomy.gui.admin:
     description: Access admin GUI features
+    default: false
+    children:
+      djeconomy.gui.admin.economy: true
+
+  # Admin Economy GUI granular permissions
+  djeconomy.gui.admin.economy:
+    description: Access Admin Economy GUI (open)
+    default: false
+    children:
+      djeconomy.gui.admin.economy.balance.view: true
+      djeconomy.gui.admin.economy.balance.modify: true
+      djeconomy.gui.admin.economy.history.view: true
+      djeconomy.gui.admin.economy.confirm.manage: true
+
+  djeconomy.gui.admin.economy.balance.view:
+    description: View player/business balances in Admin Economy GUI
+    default: false
+  djeconomy.gui.admin.economy.balance.modify:
+    description: Modify balances (give/take/set) via Admin Economy GUI
+    default: false
+  djeconomy.gui.admin.economy.history.view:
+    description: View transaction history/audit in Admin Economy GUI
+    default: false
+  djeconomy.gui.admin.economy.confirm.manage:
+    description: Manage pending confirmations (approve/deny) in Admin Economy GUI
     default: false
 
   # Revenue and Analytics
@@ -346,6 +375,7 @@ permissions:
       djeconomy.system.reload: true
       djeconomy.system.debug: true
       djeconomy.system.backup: true
+      djeconomy.system.doctor: true
       djeconomy.admin.economy: true
       djeconomy.admin.level.set: true
       djeconomy.admin.level.get: true
@@ -355,6 +385,7 @@ permissions:
       djeconomy.admin.jobs.invalidate: true
       djeconomy.admin.history.view: true
       djeconomy.admin.businessinfo: true
+      djeconomy.gui.admin.economy: true
 
   djeconomy.admin.revenue.manual:
     description: Manually generate revenue for any business
@@ -412,6 +443,7 @@ permissions:
       djeconomy.system.reload: true
       djeconomy.system.debug: true
       djeconomy.system.backup: true
+      djeconomy.system.doctor: true
 
   djeconomy.system.reload:
     description: Reload plugin configuration
@@ -421,6 +453,10 @@ permissions:
     default: false
   djeconomy.system.backup:
     description: Create system backups
+    default: false
+
+  djeconomy.system.doctor:
+    description: Run system diagnostics (/djeconomy doctor)
     default: false
 
   # ==================== LIMIT PERMISSIONS ====================
@@ -551,6 +587,7 @@ commands:
       • reload - Reload plugin configuration
       • debug - Toggle debug mode
       • backup - Create system backup
+      • doctor - Run system diagnostics
       
       Business Administration:
       • view-any <business_id> - View any business

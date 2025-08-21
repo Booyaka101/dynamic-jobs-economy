@@ -6,7 +6,7 @@
 
     <groupId>com.boopugstudios</groupId>
     <artifactId>DynamicJobsEconomy</artifactId>
-    <version>1.0.4.1</version>
+    <version>1.0.5</version>
     <packaging>jar</packaging>
   
     <name>DynamicJobsEconomy</name>
@@ -38,6 +38,9 @@
                 <configuration>
                     <useModulePath>false</useModulePath>
                     <excludeTags>integration</excludeTags>
+                    <!-- Prevent indefinitely hung test JVMs -->
+                    <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
+                    <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
                 </configuration>
             </plugin>
             <plugin>
@@ -196,6 +199,9 @@
                         <configuration combine.self="override">
                             <useModulePath>false</useModulePath>
                             <includeTags>integration</includeTags>
+                            <!-- Prevent indefinitely hung test JVMs in ITs (e.g., Testcontainers issues) -->
+                            <forkedProcessTimeoutInSeconds>2400</forkedProcessTimeoutInSeconds>
+                            <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -324,6 +330,8 @@
                                 <configuration combine.self="override">
                                     <minimizeJar>true</minimizeJar>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <shadedArtifactAttached>true</shadedArtifactAttached>
+                                    <shadedClassifierName>spigot-ultra</shadedClassifierName>
                                     <artifactSet>
                                         <excludes>
                                             <!-- Exclude all DB drivers for smallest upload; requires external DB (MySQL) -->
@@ -375,6 +383,8 @@
                                 <configuration combine.self="override">
                                     <minimizeJar>true</minimizeJar>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <shadedArtifactAttached>true</shadedArtifactAttached>
+                                    <shadedClassifierName>spigot-lite</shadedClassifierName>
                                     <artifactSet>
                                         <excludes>
                                             <!-- Exclude heavy optional drivers from the Spigot upload build -->

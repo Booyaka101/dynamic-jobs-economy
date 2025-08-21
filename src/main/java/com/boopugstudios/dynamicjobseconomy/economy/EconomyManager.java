@@ -184,6 +184,13 @@ public class EconomyManager {
         return useVault && vaultEconomy != null;
     }
     
+    /**
+     * Returns the name of the active Vault economy provider, or null if Vault is not enabled.
+     */
+    public String getVaultProviderName() {
+        return isVaultEnabled() ? vaultEconomy.getName() : null;
+    }
+    
     private double getInternalBalanceOffline(OfflinePlayer player) {
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
             String sql = "SELECT money FROM players WHERE uuid = ?";

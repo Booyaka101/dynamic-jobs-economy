@@ -724,4 +724,32 @@ public class DatabaseManager {
     public String getDatabaseType() {
         return databaseType;
     }
+    
+    /**
+     * Expose current number of connections checked out or created.
+     */
+    public int getActiveConnectionsCount() {
+        return activeConnections.get();
+    }
+
+    /**
+     * Expose current number of idle connections in the pool.
+     */
+    public int getPoolSize() {
+        return connectionPool.size();
+    }
+
+    /**
+     * Maximum configured pool size.
+     */
+    public int getMaxPoolSize() {
+        return MAX_POOL_SIZE;
+    }
+
+    /**
+     * Minimum configured pool size (prewarmed on initialize).
+     */
+    public int getMinPoolSize() {
+        return MIN_POOL_SIZE;
+    }
 }

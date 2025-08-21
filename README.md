@@ -20,7 +20,7 @@ A Minecraft economy plugin that actually makes sense. Jobs, gigs, and businesses
 2. Restart server
 3. Done! It works out of the box
 
-Note: The built JAR is shaded. Use the JAR from `target/`, e.g. `DynamicJobsEconomy-1.0.4.jar`.
+Note: The built JAR is shaded. Use the JAR from `target/`, e.g. `DynamicJobsEconomy-1.0.5.jar`.
 
 Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 
@@ -69,7 +69,7 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
   - Use `/djeconomy confirm` to finalize large economy actions.
 
 - Choose the right JAR:
-  - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.4.jar`.
+  - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.
   - Advanced: minimal profiles like `spigot-lite`, `spigot-linux-sqlite`, `spigot-ultra`, `spigot-ultra-mysql` offer smaller JARs with trade-offs.
 
 ## Commands

@@ -8,7 +8,7 @@
 ```bash
 # Just drop the JAR file in your plugins folder - that's it!
 # No dependencies required, everything is included
-# Use the JAR from target (e.g. DynamicJobsEconomy-1.0.4.jar)
+# Use the JAR from target (e.g. DynamicJobsEconomy-1.0.5.jar)
 ```
 
 #### **2. First Launch**

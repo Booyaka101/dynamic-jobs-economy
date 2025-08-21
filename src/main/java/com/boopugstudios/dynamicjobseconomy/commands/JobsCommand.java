@@ -31,7 +31,7 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
         }
         
         Player player = (Player) sender;
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DynamicJobs§8] ");
+        String prefix = plugin.getMessages().getPrefix();
         
         if (args.length == 0) {
             showJobsHelp(player, prefix);

@@ -26,6 +26,17 @@ public class JobManager {
         this.plugin = plugin;
         loadJobs();
     }
+
+    private String getPrefix() {
+        // Centralized prefix retrieval via Messages; it already prefers config.yml override then messages.yml
+        try {
+            if (plugin.getMessages() != null) {
+                String p = plugin.getMessages().getPrefix();
+                if (p != null && !p.isEmpty()) return p;
+            }
+        } catch (Throwable ignored) {}
+        return "§8[§6DynamicJobs§8] ";
+    }
     
     private void loadJobs() {
         ConfigurationSection jobsSection = plugin.getConfig().getConfigurationSection("jobs");
@@ -149,43 +160,43 @@ public class JobManager {
             case "double_ores":
                 // Give player temporary mining luck effect
                 player.addPotionEffect(new PotionEffect(PotionEffectType.LUCK, 6000, 1)); // 5 minutes
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aDouble Ore perk activated! Mining luck increased for 5 minutes.");
                 break;
             case "fortune_boost":
                 // Store fortune boost in player metadata for use in mining events
                 player.setMetadata("dje_fortune_boost", new FixedMetadataValue(plugin, level));
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aFortune boost perk activated! Level " + level + " fortune effect.");
                 break;
             case "speed_boost":
                 // Give player speed boost
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 12000, Math.min(level / 20, 2))); // 10 minutes
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aSpeed boost perk activated! Movement speed increased.");
                 break;
             case "extra_crops":
                 // Store crop multiplier in player metadata
                 player.setMetadata("dje_crop_multiplier", new FixedMetadataValue(plugin, 1.0 + (level * 0.01))); // 1% per level
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aExtra Crops perk activated! Crop yield increased by " + (level) + "%.");
                 break;
             case "night_vision":
                 // Give night vision for miners
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 18000, 0)); // 15 minutes
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aNight Vision perk activated! See clearly in dark mines.");
                 break;
             case "water_breathing":
                 // Give water breathing for underwater work
                 player.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 12000, 0)); // 10 minutes
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aWater Breathing perk activated! Work underwater without worry.");
                 break;
             case "haste":
                 // Give haste effect for faster work
                 player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 9600, Math.min(level / 25, 2))); // 8 minutes
-                player.sendMessage(plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ") + 
+                player.sendMessage(getPrefix() + 
                     "§aHaste perk activated! Work faster with increased mining/digging speed.");
                 break;
             default:

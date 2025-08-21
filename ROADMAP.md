@@ -1,6 +1,6 @@
 # 🚀 Future Release Roadmap – Dynamic Jobs & Economy Pro
 
-Current released version: 1.0.4
+Current released version: 1.0.5
 
 Use this file during planning/release sessions. Check items off as we implement them and link PRs/commits.
 
@@ -11,7 +11,7 @@ Use this file during planning/release sessions. Check items off as we implement 
 
 ---
 
-## 🌟 Near-term (target: 1.0.5)
+## 🌟 Near-term (target: 1.0.6)
 - [ ] Implement "/djeconomy doctor" self-check with actionable tips (id: plan_doctor)
   - Validate config keys, DB connectivity, Vault presence, permissions sanity
   - Output clear pass/warn/fail with suggestions
@@ -27,7 +27,7 @@ Use this file during planning/release sessions. Check items off as we implement 
   - Give/Take/Set with confirmation, reason logging, history viewer
   - Touchpoints: command handlers, GUI classes, `messages.yml`
 
-### ✅ 1.0.5 Acceptance Criteria
+### ✅ 1.0.6 Acceptance Criteria
 - plan_doctor
   - `/djeconomy doctor` prints plugin version, Java version, server brand
   - Validates keys: `database.type`, `economy.admin_confirmation.threshold`, `economy.admin_confirmation.expiry_seconds`, `integrations.vault.enabled`

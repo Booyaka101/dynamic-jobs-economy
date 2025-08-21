@@ -9,7 +9,7 @@
 ### 🚀 **Quick Install (3 Steps)**
 
 #### **Step 1: Download & Place**
-1. Download the latest JAR `DynamicJobsEconomy-1.0.4.jar` from releases
+1. Download the latest JAR `DynamicJobsEconomy-1.0.5.jar` from releases
 2. Place it in your server's `plugins/` folder
 3. **That's it!** No additional files needed - everything is included!
 
@@ -106,7 +106,7 @@ The plugin works perfectly with **default settings**, but you can customize:
   - Use `/djeconomy confirm` after a warning to finalize large operations.
 
 - **Choose the right JAR:**
-  - Use the main JAR for most servers: `DynamicJobsEconomy-1.0.4.jar`.
+  - Use the main JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.
   - Minimal builds (advanced): profiles like `spigot-lite`, `spigot-linux-sqlite`, `spigot-ultra`, `spigot-ultra-mysql` reduce size but may require external DB drivers or OS-specific natives.
 
 ### 🔧 **Advanced Setup**

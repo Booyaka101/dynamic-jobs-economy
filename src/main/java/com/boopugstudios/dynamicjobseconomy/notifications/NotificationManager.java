@@ -101,7 +101,7 @@ public class NotificationManager implements Listener {
      * Sends a notification directly to an online player
      */
     private void sendNotificationToPlayer(Player player, String message, NotificationType type) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+        String prefix = getPrefix();
         String formattedMessage = prefix + type.getColor() + type.getIcon() + " " + message;
         
         player.sendMessage(formattedMessage);
@@ -192,7 +192,7 @@ public class NotificationManager implements Listener {
             List<String> notifications = getUnreadNotifications(playerUUID);
             
             if (!notifications.isEmpty()) {
-                String prefix = plugin.getConfig().getString("messages.prefix", "§8[§6DJE§8] ");
+                String prefix = getPrefix();
                 player.sendMessage(prefix + "§e§lYou have " + notifications.size() + " pending notification(s):");
                 
                 // Show up to 5 most recent notifications
@@ -209,6 +209,17 @@ public class NotificationManager implements Listener {
                 markAllAsRead(playerUUID);
             }
         }, 60L); // 3 second delay
+    }
+
+    private String getPrefix() {
+        // Centralized prefix retrieval via Messages; it already prefers config.yml override then messages.yml
+        try {
+            if (plugin.getMessages() != null) {
+                String p = plugin.getMessages().getPrefix();
+                if (p != null && !p.isEmpty()) return p;
+            }
+        } catch (Throwable ignored) {}
+        return "§8[§6DynamicJobs§8] ";
     }
     
     /**
