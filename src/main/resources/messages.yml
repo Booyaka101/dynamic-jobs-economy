@@ -7,6 +7,9 @@ messages:
 admin:
   no_permission: "§cYou don't have permission to use this command!"
   reload_success: "§aConfiguration reloaded!"
+  permission_denied_action: "§c✗ You don't have permission to %action%."
+  permission_denied_required: "§7Required permission: §e%permission%"
+  permission_contact_admin: "§7Contact an administrator if you believe this is an error."
 
   usage:
     economy: "§cUsage: /djeconomy economy <give|take|set> <player> <amount>"
@@ -29,21 +32,25 @@ admin:
   offline_note: "§7Note: Player '%player%' is offline. Processing transaction..."
   negative_amount: "§cAmount cannot be negative!"
   invalid_amount: "§cInvalid amount!"
-  amount_too_large: "§cAmount too large! Maximum: $1,000,000,000"
+  amount_too_large: "§cAmount too large! Maximum: %max%"
 
-  large_detected: "§e⚠ Large amount detected: $%amount%"
+  large_detected: "§e⚠ Large amount detected: %money%"
   confirm_prompt: "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"
 
-  give_success: "§aGave $%amount% to %player%"
-  take_insufficient: "§cPlayer only has $%balance%!"
-  take_success: "§aTook $%amount% from %player%"
-  set_success: "§aSet %player%'s balance to $%amount%"
+  give_success: "§aGave %money% to %player%"
+  take_insufficient: "§cPlayer only has %balance%!"
+  take_success: "§aTook %money% from %player%"
+  set_success: "§aSet %player%'s balance to %money%"
   invalid_action: "§cInvalid action! Use give, take, or set"
   failed_execute: "§cFailed to execute economy command!"
+  economy_unavailable: "§cEconomy system is not available!"
 
   confirm_players_only: "§cOnly players can use confirmations!"
   no_pending_confirm: "§cNo pending action to confirm!"
   confirm_expired: "§cConfirmation expired! Please retry the command."
+  confirm_cancelled: "§7Pending action cancelled."
+  gui:
+    players_only: "§cOnly players can open the GUI!"
 
   history_none: "§7No history found for '%player%'."
   history_header: "§eShowing last %count% entries for '%player%':"
@@ -72,6 +79,20 @@ admin:
     invalidatejobs: "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"
     doctor: "§f/djeconomy doctor §7- Run system diagnostics"
     businessinfo: "§f/djeconomy businessinfo [businessName] §7- View global or per-business stats"
+    gui: "§f/djeconomy gui §7- Open the Admin Economy GUI"
+
+  # Admin welcome (externalized)
+  welcome:
+    header: "§8§m----------§r §6BooPug Studios§8 §m----------"
+    active: "§6Dynamic Jobs & Economy Pro §7is now §aactive§7!"
+    quick_header: "§7Quick Admin Commands:"
+    status: "§f/djeconomy status §7- Check plugin status"
+    reload: "§f/djeconomy reload §7- Reload configuration"
+    player_commands: "§7Player Commands:"
+    jobs: "§f/jobs §7- Job system"
+    gigs: "§f/gigs §7- Gig marketplace"
+    business: "§f/business §7- Business management"
+    installation: "§7 Check §fINSTALLATION.md §7for full setup guide"
 
   # Doctor diagnostics
   doctor:
@@ -109,3 +130,65 @@ admin:
         pass: "§aPASS"
         warn: "§eWARN"
         fail: "§cFAIL"
+      names:
+        config_keys: "Configuration Keys"
+        db_connectivity: "Database Connectivity"
+        db_latency: "Database Latency"
+        mysql_config: "MySQL Config"
+        sqlite_file: "SQLite File"
+        economy_manager: "Economy Manager"
+        economy_integration_vault: "Economy Integration (Vault)"
+        economy_integration_internal: "Economy Integration (Internal)"
+        admin_confirm_threshold: "Admin Confirmation Threshold"
+        admin_confirm_expiry: "Admin Confirmation Expiry"
+        permissions: "Permissions Registration"
+      tips:
+        config_keys_review: "Missing: %missing%. Invalid: %invalid%"
+        db:
+          manager_unavailable: "DatabaseManager unavailable. Check database.type in config.yml and restart."
+          connect_fail: "Cannot query database. Verify credentials/URL and that the server is reachable."
+          latency_high: "High latency (%ms% ms). Consider tuning DB or network."
+          latency_very_high: "Very high latency (%ms% ms). Consider switching to MySQL or optimizing storage/network."
+        mysql:
+          missing_keys: "Missing/invalid keys: %keys%. Set database.mysql.* in config.yml."
+        sqlite:
+          file_missing: "database.db not found. Ensure plugin can write to its data folder."
+          inspect_fail: "Could not inspect SQLite file: %error%"
+        economy:
+          manager_missing: "Economy system unavailable. If using Vault, install Vault and an economy provider; otherwise use internal economy."
+        vault:
+          preferred_not_enabled: "Vault preferred but not enabled. Install/enable Vault and a provider."
+        admin:
+          threshold_not_set: "Set economy.admin_confirmation.threshold to a positive number to avoid accidental large payouts."
+          expiry_not_set: "Set economy.admin_confirmation.expiry_seconds to a positive number (e.g., 30)."
+        permissions:
+          missing_critical: "Missing critical permission nodes: %nodes%. Verify plugin.yml and load order."
+          missing_optional: "Missing optional permission nodes: %nodes%."
+
+gui:
+  common:
+    close: "Close"
+    back: "Back"
+    next: "Next"
+    prev: "Previous"
+  admin:
+    economy:
+      title:
+        home: "Admin Economy"
+        player_select: "Select Player"
+        player: "Player • %player%"
+        confirm_queue: "Pending Confirmations"
+      action:
+        give: "Give %amount%"
+        take: "Take %amount%"
+        set: "Set %amount%"
+      history:
+        header: "Recent Transactions"
+      confirm:
+        required: "Confirmation required for %amount%+"
+        created: "Pending confirmation created (expires in %seconds%s)"
+        queue_title: "Pending Confirmations"
+        approved: "Approved by %admin%"
+        denied: "Denied by %admin% (%reason%)"
+      error:
+        no_permission: "You lack permission: %node%"

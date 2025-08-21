@@ -1,6 +1,11 @@
 package com.boopugstudios.dynamicjobseconomy.permissions;
 
+import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.i18n.Messages;
 import org.bukkit.entity.Player;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Comprehensive permissions system for Dynamic Jobs & Economy Pro
@@ -244,16 +249,26 @@ public class BusinessPermissions {
      * Send permission denied message
      */
     public static void sendPermissionDenied(Player player, String action) {
-        player.sendMessage("§c✗ You don't have permission to " + action + ".");
-        player.sendMessage("§7Contact an administrator if you believe this is an error.");
+        Messages m = DynamicJobsEconomy.getInstance().getMessages();
+        String prefix = m.getPrefix();
+        Map<String, String> ph = new HashMap<>();
+        ph.put("action", action);
+        player.sendMessage(prefix + m.get("admin.permission_denied_action", ph, "§c✗ You don't have permission to %action%."));
+        player.sendMessage(prefix + m.get("admin.permission_contact_admin", null, "§7Contact an administrator if you believe this is an error."));
     }
     
     /**
      * Send permission denied message with required permission
      */
     public static void sendPermissionDenied(Player player, String action, String requiredPermission) {
-        player.sendMessage("§c✗ You don't have permission to " + action + ".");
-        player.sendMessage("§7Required permission: §e" + requiredPermission);
-        player.sendMessage("§7Contact an administrator if you believe this is an error.");
+        Messages m = DynamicJobsEconomy.getInstance().getMessages();
+        String prefix = m.getPrefix();
+        Map<String, String> ph = new HashMap<>();
+        ph.put("action", action);
+        player.sendMessage(prefix + m.get("admin.permission_denied_action", ph, "§c✗ You don't have permission to %action%."));
+        Map<String, String> ph2 = new HashMap<>();
+        ph2.put("permission", requiredPermission);
+        player.sendMessage(prefix + m.get("admin.permission_denied_required", ph2, "§7Required permission: §e%permission%"));
+        player.sendMessage(prefix + m.get("admin.permission_contact_admin", null, "§7Contact an administrator if you believe this is an error."));
     }
 }

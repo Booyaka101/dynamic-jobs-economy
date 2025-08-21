@@ -85,6 +85,14 @@ jobs:
           echo "sha256=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "checksum_path=${JAR}.sha256" >> $GITHUB_OUTPUT
 
+      - name: Verify SHA-256 checksum
+        shell: bash
+        run: |
+          JAR="${{ steps.size.outputs.jar_path }}"
+          pushd "$(dirname "$JAR")" >/dev/null
+          sha256sum -c "$(basename "$JAR").sha256"
+          popd >/dev/null
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

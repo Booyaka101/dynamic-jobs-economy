@@ -49,13 +49,6 @@ When you start your server, you'll see:
         password: your_pass
         useSSL: false
     ```
-  - MongoDB example:
-    ```yaml
-    database:
-      type: mongodb
-      mongodb:
-        connection_string: "mongodb://localhost:27017/dynamicjobs"
-    ```
 
 - Permissions:
   - Admin: `djeconomy.admin`

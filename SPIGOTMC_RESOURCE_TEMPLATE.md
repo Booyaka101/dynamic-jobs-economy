@@ -16,7 +16,7 @@ A small polish release that refines docs and fixes the business performance repo
 ## 🔌 Compatibility
 - Minecraft: 1.20.4 – 1.21.x
 - Integrations: Vault, WorldGuard, McMMO, LuckPerms
-- Databases: SQLite, MySQL, MongoDB
+- Databases: SQLite, MySQL
 
 ## ⬇️ Download
 - Use the main JAR: `DynamicJobsEconomy-1.0.5.jar`
@@ -60,13 +60,6 @@ A small polish release that refines docs and fixes the business performance repo
         username: your_user
         password: your_pass
         useSSL: false
-    ```
-  - MongoDB example:
-    ```yaml
-    database:
-      type: mongodb
-      mongodb:
-        connection_string: "mongodb://localhost:27017/dynamicjobs"
     ```
 
 - Permissions:

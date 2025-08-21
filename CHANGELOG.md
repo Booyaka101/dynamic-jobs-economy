@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### ✨ Improvements
-- 
+- CI now publishes SHA-256 checksums for all built artifacts and verifies integrity before upload.
 
 ### 🐛 Bug Fixes
 - 
@@ -12,7 +12,8 @@
 - 
 
 ### 📚 Docs
-- 
+- Removed all MongoDB references and documented dropped MongoDB support.
+- Added checksum verification instructions to `README.md` and `SPIGOTMC_UPDATE_GUIDE.md`.
 
 ## Version 1.0.5 - "Polish & Performance Reporting Fix" (August 2025)
 
@@ -170,7 +171,7 @@
 - Business management with employee hiring and payroll
 - Gig marketplace for freelance work
 - Advanced economy system with Vault integration
-- Multi-database support (SQLite, MySQL, MongoDB)
+- Multi-database support (SQLite, MySQL)
 
 **Command System**
 - `/jobs` - Complete job management

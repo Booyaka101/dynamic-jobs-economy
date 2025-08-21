@@ -3,7 +3,7 @@
 
 # Database Configuration
 database:
-  type: "sqlite" # Options: sqlite, mysql, mongodb
+  type: "sqlite" # Options: sqlite, mysql
   mysql:
     host: "localhost"
     port: 3306
@@ -11,8 +11,6 @@ database:
     username: "root"
     password: "password"
     useSSL: false
-  mongodb:
-    connection_string: "mongodb://localhost:27017/dynamicjobs"
 
 # Jobs Settings
 jobs:
@@ -110,6 +108,19 @@ economy:
     income_tax_rate: 0.10 # 10% income tax
     business_tax_rate: 0.15 # 15% business tax
     property_tax_rate: 0.05 # 5% property tax
+
+  # Currency format settings
+  format:
+    symbol: "$"
+    position: "prefix"  # prefix or suffix
+    space: false         # add space between symbol and number
+    decimals: 2
+    use_grouping: true
+    grouping_separator: ","
+    decimal_separator: "."
+    abbreviate:
+      enabled: false
+      decimals: 2
 
 # Business Settings
 business:
@@ -213,7 +224,7 @@ messages:
   insufficient_funds: "&cYou don't have enough money!"
   business_created: "&aYour business '%name%' has been created!"
   gig_posted: "&aYour gig has been posted successfully!"
-  gig_completed: "&aGig completed! You earned $%amount%!"
+  gig_completed: "&aGig completed! You earned %money%!"
 
 # Debug settings
 debug:

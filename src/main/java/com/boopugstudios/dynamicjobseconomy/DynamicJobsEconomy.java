@@ -7,6 +7,7 @@ import com.boopugstudios.dynamicjobseconomy.economy.EconomyManager;
 import com.boopugstudios.dynamicjobseconomy.integrations.IntegrationManager;
 import com.boopugstudios.dynamicjobseconomy.jobs.JobManager;
 import com.boopugstudios.dynamicjobseconomy.admin.AdminAuditLogger;
+import com.boopugstudios.dynamicjobseconomy.admin.AdminConfirmationManager;
 import com.boopugstudios.dynamicjobseconomy.business.ConsolidatedBusinessManager;
 import com.boopugstudios.dynamicjobseconomy.gigs.GigManager;
 import com.boopugstudios.dynamicjobseconomy.notifications.NotificationManager;
@@ -15,6 +16,7 @@ import com.boopugstudios.dynamicjobseconomy.listeners.JobListener;
 import com.boopugstudios.dynamicjobseconomy.listeners.BusinessListener;
 import com.boopugstudios.dynamicjobseconomy.i18n.Messages;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.boopugstudios.dynamicjobseconomy.util.EconomyFormat;
 
 import java.io.File;
 import java.util.logging.Level;
@@ -35,6 +37,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     private NotificationManager notificationManager;
     private AdminAuditLogger adminAuditLogger;
     private Messages messages;
+    private AdminConfirmationManager adminConfirmationManager;
 
     @Override
     public void onEnable() {
@@ -45,6 +48,8 @@ public final class DynamicJobsEconomy extends JavaPlugin {
 
         // Save default config
         saveDefaultConfig();
+        // Load currency formatting settings
+        EconomyFormat.reloadFromConfig(getConfig());
         
         // Load messages.yml (i18n)
         messages = new Messages(this);
@@ -120,7 +125,14 @@ public final class DynamicJobsEconomy extends JavaPlugin {
                 consolidatedBusinessManager.processPayroll();
             }
         }, 72000L, 72000L); // 1 hour initial delay, then every hour
-        
+
+        // Periodically purge expired admin confirmations (every 60 seconds)
+        getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+            if (adminConfirmationManager != null) {
+                adminConfirmationManager.purgeExpired();
+            }
+        }, 1200L, 1200L);
+
         getLogger().info("Dynamic Jobs & Economy Pro has been enabled successfully!");
         getLogger().info("Version: " + getDescription().getVersion());
         getLogger().info("Developed by BooPug Studios");
@@ -160,6 +172,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
             // Initialize v1.0.2 new managers
             notificationManager = new NotificationManager(this);
             adminAuditLogger = new AdminAuditLogger(this);
+            adminConfirmationManager = new AdminConfirmationManager(this);
             consolidatedBusinessManager = new ConsolidatedBusinessManager(this);
             
             // Initialize Minecraft-viable business GUI
@@ -269,6 +282,14 @@ public final class DynamicJobsEconomy extends JavaPlugin {
         return adminAuditLogger;
     }
     
+    public AdminConfirmationManager getAdminConfirmationManager() {
+        // Lazy init to support unit tests that do not run onEnable()
+        if (adminConfirmationManager == null) {
+            adminConfirmationManager = new AdminConfirmationManager(this);
+        }
+        return adminConfirmationManager;
+    }
+    
     public Messages getMessages() {
         return messages;
     }
@@ -276,6 +297,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     // Utility methods
     public void reloadConfiguration() {
         reloadConfig();
+        EconomyFormat.reloadFromConfig(getConfig());
         if (messages != null) {
             messages.load();
         }
@@ -299,6 +321,7 @@ public final class DynamicJobsEconomy extends JavaPlugin {
     public void onReload() {
         // Reload configs
         reloadConfig();
+        EconomyFormat.reloadFromConfig(getConfig());
         if (messages != null) {
             messages.load();
         }
@@ -343,8 +366,8 @@ public final class DynamicJobsEconomy extends JavaPlugin {
             }
             // Database
             String dbType = getConfig().getString("database.type", "sqlite").toLowerCase();
-            if (!dbType.equals("sqlite") && !dbType.equals("mysql") && !dbType.equals("mongodb")) {
-                getLogger().severe("Invalid database.type. Must be sqlite, mysql, or mongodb.");
+            if (!dbType.equals("sqlite") && !dbType.equals("mysql")) {
+                getLogger().severe("Invalid database.type. Must be sqlite or mysql.");
                 return false;
             }
             getLogger().info("\u2713 Configuration validation passed!");
@@ -364,20 +387,21 @@ public final class DynamicJobsEconomy extends JavaPlugin {
         getServer().getOnlinePlayers().stream()
             .filter(player -> player.isOp() || player.hasPermission("djeconomy.admin"))
             .forEach(admin -> {
-                admin.sendMessage("\n§8§m----------§r §6BooPug Studios§8 §m----------");
-                admin.sendMessage("§6Dynamic Jobs & Economy Pro §7is now §aactive§7!");
+                String prefix = messages.getPrefix();
+                admin.sendMessage("\n" + prefix + messages.get("admin.welcome.header", null, "§8§m----------§r §6BooPug Studios§8 §m----------"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.active", null, "§6Dynamic Jobs & Economy Pro §7is now §aactive§7!"));
                 admin.sendMessage("");
-                admin.sendMessage("§7Quick Admin Commands:");
-                admin.sendMessage("§f/djeconomy status §7- Check plugin status");
-                admin.sendMessage("§f/djeconomy reload §7- Reload configuration");
+                admin.sendMessage(prefix + messages.get("admin.welcome.quick_header", null, "§7Quick Admin Commands:"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.status", null, "§f/djeconomy status §7- Check plugin status"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.reload", null, "§f/djeconomy reload §7- Reload configuration"));
                 admin.sendMessage("");
-                admin.sendMessage("§7Player Commands:");
-                admin.sendMessage("§f/jobs §7- Job system");
-                admin.sendMessage("§f/gigs §7- Gig marketplace");
-                admin.sendMessage("§f/business §7- Business management");
+                admin.sendMessage(prefix + messages.get("admin.welcome.player_commands", null, "§7Player Commands:"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.jobs", null, "§f/jobs §7- Job system"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.gigs", null, "§f/gigs §7- Gig marketplace"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.business", null, "§f/business §7- Business management"));
                 admin.sendMessage("");
-                admin.sendMessage("§7📚 Check §fINSTALLATION.md §7for full setup guide");
-                admin.sendMessage("§8§m----------§r §6BooPug Studios§8 §m----------\n");
+                admin.sendMessage(prefix + messages.get("admin.welcome.installation", null, "§7 Check §fINSTALLATION.md §7for full setup guide"));
+                admin.sendMessage(prefix + messages.get("admin.welcome.header", null, "§8§m----------§r §6BooPug Studios§8 §m----------") + "\n");
             });
     }
 }

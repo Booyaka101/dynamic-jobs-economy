@@ -50,7 +50,6 @@ The plugin works perfectly with **default settings**, but you can customize:
 #### **Database Options:**
 - **SQLite** (Default) - No setup required, works immediately
 - **MySQL** - For larger servers, edit database section in config
-- **MongoDB** - For advanced setups
 
 #### **Economy Integration:**
 - **Vault** (Recommended) - Automatically detected and used
@@ -76,13 +75,6 @@ The plugin works perfectly with **default settings**, but you can customize:
         username: your_user
         password: your_pass
         useSSL: false
-    ```
-  - For MongoDB, set:
-    ```yaml
-    database:
-      type: mongodb
-      mongodb:
-        connection_string: "mongodb://localhost:27017/dynamicjobs"
     ```
 
 - **Permissions:**

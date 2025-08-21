@@ -1,9 +1,14 @@
 package com.boopugstudios.dynamicjobseconomy.commands;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.admin.AdminConfirmationManager;
+import com.boopugstudios.dynamicjobseconomy.economy.EconomyManager;
+import com.boopugstudios.dynamicjobseconomy.gui.AdminEconomyGui;
 import com.boopugstudios.dynamicjobseconomy.util.JobNameUtil;
+import com.boopugstudios.dynamicjobseconomy.util.EconomyFormat;
 import com.boopugstudios.dynamicjobseconomy.business.Business;
 import com.boopugstudios.dynamicjobseconomy.business.ConsolidatedBusinessManager;
+import com.boopugstudios.dynamicjobseconomy.doctor.DoctorCommandExecutor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -12,10 +17,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -37,8 +38,8 @@ import java.util.Date;
 public class AdminCommand implements CommandExecutor, TabCompleter {
     
     private final DynamicJobsEconomy plugin;
-    private final Map<UUID, PendingAdminAction> pendingConfirmations = new HashMap<>();
     // Confirmation settings are configurable via config.yml
+    private AdminConfirmationManager localAdminConfirm;
     
     public AdminCommand(DynamicJobsEconomy plugin) {
         this.plugin = plugin;
@@ -91,23 +92,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
     }
     
-    private static class PendingAdminAction {
-        final String action;
-        final String playerName;
-        final double amount;
-        final long timestamp;
-        
-        PendingAdminAction(String action, String playerName, double amount, long timestamp) {
-            this.action = action;
-            this.playerName = playerName;
-            this.amount = amount;
-            this.timestamp = timestamp;
-        }
-        
-        boolean isExpired(long now, long expiryMillis) {
-            return now - timestamp > expiryMillis; // configurable timeout
-        }
-    }
+    // Pending confirmation state is managed centrally by AdminConfirmationManager
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -143,6 +128,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 plugin.reloadConfig();
                 plugin.onReload();
                 sender.sendMessage(prefix + msg("admin.reload_success", null, "§aConfiguration reloaded!"));
+                break;
+            case "gui":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(prefix + msg("admin.gui.players_only", null, "§cOnly players can open the GUI!"));
+                    return true;
+                }
+                Player guiPlayer = (Player) sender;
+                // Permission gating is already handled above via getRequiredPermissionForSub, but double-check here for clarity
+                if (!guiPlayer.hasPermission("djeconomy.gui.admin.economy") &&
+                        !guiPlayer.hasPermission("djeconomy.admin") &&
+                        !guiPlayer.hasPermission("dynamicjobs.admin.*")) {
+                    sender.sendMessage(prefix + msg("admin.no_permission", null, "§cYou don't have permission to use this command!"));
+                    return true;
+                }
+                AdminEconomyGui.get(plugin).openHome(guiPlayer);
                 break;
             case "confirm":
                 handleConfirmation(sender, prefix);
@@ -331,8 +331,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             
-            if (amount > 1000000000) { // 1 billion limit
-                sender.sendMessage(prefix + msg("admin.amount_too_large", null, "§cAmount too large! Maximum: $1,000,000,000"));
+            // 1 billion limit (configurable display only)
+            double MAX = 1_000_000_000d;
+            if (amount > MAX) {
+                Map<String, String> ph = new HashMap<>();
+                ph.put("max", com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(MAX));
+                sender.sendMessage(prefix + msg("admin.amount_too_large", ph, "§cAmount too large! Maximum: %max%"));
                 return;
             }
             
@@ -340,105 +344,34 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             if (amount >= getConfirmThreshold()) {
                 UUID senderUUID = sender instanceof Player ? ((Player) sender).getUniqueId() : null;
                 if (senderUUID != null) {
-                    PendingAdminAction pending = pendingConfirmations.get(senderUUID);
-                    if (pending == null || pending.isExpired(nowMillis(), getConfirmExpiryMillis()) || 
-                        !pending.action.equals(action) || !pending.playerName.equals(playerName) || 
+                    AdminConfirmationManager mgr = getOrCreateConfirmationManager();
+                    AdminConfirmationManager.PendingAdminAction pending = mgr.getPending(senderUUID);
+                    long expiryMs = mgr.getExpiryMillis();
+                    if (pending == null || pending.isExpired(nowMillis(), expiryMs) ||
+                        !pending.action.equals(action) || !pending.playerName.equals(playerName) ||
                         pending.amount != amount) {
-                        
+
                         // Store pending action using the time seam for testability
-                        pendingConfirmations.put(senderUUID, new PendingAdminAction(action, playerName, amount, nowMillis()));
+                        mgr.putPending(senderUUID, action, playerName, amount);
                         Map<String, String> ph1 = new HashMap<>();
-                        ph1.put("amount", String.format("%.2f", amount));
-                        sender.sendMessage(prefix + msg("admin.large_detected", ph1, "§e⚠ Large amount detected: $%amount%"));
+                        ph1.put("money", com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(amount));
+                        sender.sendMessage(prefix + msg("admin.large_detected", ph1, "§e⚠ Large amount detected: %money%"));
+                        Map<String, String> ph2 = new HashMap<>();
+                        ph2.put("seconds", String.valueOf(getConfirmExpirySeconds()));
+                        sender.sendMessage(prefix + msg("admin.confirm_prompt", ph2, "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"));
+                        return;
+                    } else {
+                        // Matching pending exists; require explicit /djeconomy confirm
                         Map<String, String> ph2 = new HashMap<>();
                         ph2.put("seconds", String.valueOf(getConfirmExpirySeconds()));
                         sender.sendMessage(prefix + msg("admin.confirm_prompt", ph2, "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"));
                         return;
                     }
-                    // Clear confirmation after use
-                    pendingConfirmations.remove(senderUUID);
                 }
             }
             
             // Execute the action
-            boolean success = false;
-            switch (action.toLowerCase()) {
-                case "give":
-                    // Ensure the EconomyManager is available (tests may not mock it)
-                    if (plugin.getEconomyManager() == null) {
-                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
-                        return;
-                    }
-                    if (resolution.isOnline) {
-                        success = plugin.getEconomyManager().deposit(resolution.onlinePlayer, amount);
-                    } else {
-                        success = plugin.getEconomyManager().depositPlayer(resolution.offlinePlayer, amount);
-                    }
-                    if (success) {
-                        Map<String, String> ph = new HashMap<>();
-                        ph.put("amount", String.format("%.2f", amount));
-                        ph.put("player", resolution.getName());
-                        sender.sendMessage(prefix + msg("admin.give_success", ph, "§aGave $%amount% to %player%"));
-                        logAdminAction(sender, "GIVE", resolution.getName(), amount);
-                    }
-                    break;
-                case "take":
-                    // Ensure the EconomyManager is available
-                    if (plugin.getEconomyManager() == null) {
-                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
-                        return;
-                    }
-                    double currentBalance = resolution.isOnline ? 
-                        plugin.getEconomyManager().getBalance(resolution.onlinePlayer) :
-                        plugin.getEconomyManager().getBalance(resolution.offlinePlayer);
-                    if (currentBalance < amount) {
-                        Map<String, String> ph = new HashMap<>();
-                        ph.put("balance", String.format("%.2f", currentBalance));
-                        sender.sendMessage(prefix + msg("admin.take_insufficient", ph, "§cPlayer only has $%balance%!"));
-                        return;
-                    }
-                    if (resolution.isOnline) {
-                        success = plugin.getEconomyManager().withdraw(resolution.onlinePlayer, amount);
-                    } else {
-                        success = plugin.getEconomyManager().withdraw(resolution.offlinePlayer, amount);
-                    }
-                    if (success) {
-                        Map<String, String> ph = new HashMap<>();
-                        ph.put("amount", String.format("%.2f", amount));
-                        ph.put("player", resolution.getName());
-                        sender.sendMessage(prefix + msg("admin.take_success", ph, "§aTook $%amount% from %player%"));
-                        logAdminAction(sender, "TAKE", resolution.getName(), amount);
-                    }
-                    break;
-                case "set":
-                    // Ensure the EconomyManager is available
-                    if (plugin.getEconomyManager() == null) {
-                        sender.sendMessage(prefix + msg("admin.economy_unavailable", null, "§cEconomy system is not available!"));
-                        return;
-                    }
-                    double current = resolution.isOnline ? 
-                        plugin.getEconomyManager().getBalance(resolution.onlinePlayer) :
-                        plugin.getEconomyManager().getBalance(resolution.offlinePlayer);
-                    boolean withdrawSuccess = resolution.isOnline ?
-                        plugin.getEconomyManager().withdraw(resolution.onlinePlayer, current) :
-                        plugin.getEconomyManager().withdraw(resolution.offlinePlayer, current);
-                    boolean depositSuccess = resolution.isOnline ?
-                        plugin.getEconomyManager().deposit(resolution.onlinePlayer, amount) :
-                        plugin.getEconomyManager().depositPlayer(resolution.offlinePlayer, amount);
-                    if (withdrawSuccess && depositSuccess) {
-                        Map<String, String> ph = new HashMap<>();
-                        ph.put("amount", String.format("%.2f", amount));
-                        ph.put("player", resolution.getName());
-                        sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSet %player%'s balance to $%amount%"));
-                        logAdminAction(sender, "SET", resolution.getName(), amount);
-                        success = true;
-                    }
-                    break;
-                default:
-                    sender.sendMessage(prefix + msg("admin.invalid_action", null, "§cInvalid action! Use give, take, or set"));
-                    return;
-            }
-            
+            boolean success = performEconomy(sender, action, resolution, amount, prefix);
             if (!success) {
                 sender.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
             }
@@ -447,7 +380,85 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(prefix + msg("admin.invalid_amount", null, "§cInvalid amount!"));
         }
     }
-    
+
+    private boolean performEconomy(CommandSender sender, String action, PlayerResolution resolution, double amount, String prefix) {
+        EconomyManager econ = plugin.getEconomyManager();
+        String admin = (sender instanceof Player) ? ((Player) sender).getName() : "Console";
+        switch (action.toLowerCase()) {
+            case "give": {
+                boolean ok = resolution.isOnline
+                    ? econ.deposit(resolution.onlinePlayer, amount)
+                    : econ.depositPlayer(resolution.offlinePlayer, amount);
+                if (ok) {
+                    String money = EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("money", money);
+                    ph.put("player", resolution.getName());
+                    sender.sendMessage(prefix + msg("admin.give_success", ph, "§aGave %money% to %player%"));
+                    appendHistory(admin, "GIVE", resolution.getName(), amount);
+                    return true;
+                }
+                return false;
+            }
+            case "take": {
+                double balance = resolution.isOnline
+                    ? econ.getBalance(resolution.onlinePlayer)
+                    : econ.getBalance(resolution.offlinePlayer);
+                if (balance < amount) {
+                    String balStr = EconomyFormat.money(balance);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("balance", balStr);
+                    sender.sendMessage(prefix + msg("admin.take_insufficient", ph,
+                        "§cPlayer only has %balance%!"));
+                    return true; // handled with specific message
+                }
+                boolean ok = resolution.isOnline
+                    ? econ.withdraw(resolution.onlinePlayer, amount)
+                    : econ.withdraw(resolution.offlinePlayer, amount);
+                if (ok) {
+                    String money = EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("money", money);
+                    ph.put("player", resolution.getName());
+                    sender.sendMessage(prefix + msg("admin.take_success", ph, "§aTook %money% from %player%"));
+                    appendHistory(admin, "TAKE", resolution.getName(), amount);
+                    return true;
+                }
+                return false;
+            }
+            case "set": {
+                double current = resolution.isOnline
+                    ? econ.getBalance(resolution.onlinePlayer)
+                    : econ.getBalance(resolution.offlinePlayer);
+                boolean withdrew = true;
+                if (current > 0) {
+                    withdrew = resolution.isOnline
+                        ? econ.withdraw(resolution.onlinePlayer, current)
+                        : econ.withdraw(resolution.offlinePlayer, current);
+                }
+                if (!withdrew) return false;
+                boolean deposited = resolution.isOnline
+                    ? econ.deposit(resolution.onlinePlayer, amount)
+                    : econ.depositPlayer(resolution.offlinePlayer, amount);
+                if (deposited) {
+                    String money = EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("player", resolution.getName());
+                    ph.put("money", money);
+                    sender.sendMessage(prefix + msg("admin.set_success", ph,
+                        "§aSet %player%'s balance to %money%"));
+                    appendHistory(admin, "SET", resolution.getName(), amount);
+                    return true;
+                }
+                return false;
+            }
+            default:
+                // Invalid action -> report error and return true to avoid generic failure message from caller
+                sender.sendMessage(prefix + msg("admin.invalid_action", null, "§cInvalid action! Use give, take, or set"));
+                return true;
+        }
+    }
+
     private void handleConfirmation(CommandSender sender, String prefix) {
         if (!(sender instanceof Player)) {
             sender.sendMessage(prefix + msg("admin.confirm_players_only", null, "§cOnly players can use confirmations!"));
@@ -455,34 +466,45 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
         
         Player player = (Player) sender;
-        PendingAdminAction pending = pendingConfirmations.get(player.getUniqueId());
+        AdminConfirmationManager mgr = getOrCreateConfirmationManager();
+        AdminConfirmationManager.PendingAdminAction pending = mgr.getPending(player.getUniqueId());
         
         if (pending == null) {
             sender.sendMessage(prefix + msg("admin.no_pending_confirm", null, "§cNo pending action to confirm!"));
             return;
         }
         
-        if (pending.isExpired(nowMillis(), getConfirmExpiryMillis())) {
-            pendingConfirmations.remove(player.getUniqueId());
+        if (pending.isExpired(nowMillis(), mgr.getExpiryMillis())) {
+            mgr.remove(player.getUniqueId());
             sender.sendMessage(prefix + msg("admin.confirm_expired", null, "§cConfirmation expired! Please retry the command."));
             return;
         }
         
-        // Re-execute the original command with confirmation bypass
-        handleEconomy(sender, pending.action, pending.playerName, String.valueOf(pending.amount), prefix);
+        // Execute the original command with confirmation bypass
+        mgr.remove(player.getUniqueId());
+        PlayerResolution resolution = resolvePlayer(pending.playerName);
+        if (!resolution.isValid()) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", pending.playerName);
+            sender.sendMessage(prefix + msg("admin.player_not_found", ph, "§cPlayer '%player%' not found or has never joined the server!"));
+            return;
+        }
+        if (!resolution.isOnline) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", pending.playerName);
+            sender.sendMessage(prefix + msg("admin.offline_note", ph, "§7Note: Player '%player%' is offline. Processing transaction..."));
+        }
+        boolean success = performEconomy(sender, pending.action, resolution, pending.amount, prefix);
+        if (!success) {
+            sender.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
+        }
     }
-    
-    private void logAdminAction(CommandSender sender, String action, String targetPlayer, double amount) {
-        String adminName = sender instanceof Player ? ((Player) sender).getName() : "CONSOLE";
-        plugin.getLogger().info(String.format("[ADMIN] %s used %s on %s for $%.2f", 
-            adminName, action, targetPlayer, amount));
-        appendHistory(adminName, action, targetPlayer, amount);
-    }
-    
+
     private void showAdminHelp(CommandSender sender, String prefix) {
         sender.sendMessage(msg("admin.help.header", null, "§8§m----------§r §6Admin Help §8§m----------"));
         sender.sendMessage(msg("admin.help.reload", null, "§f/djeconomy reload §7- Reload configuration"));
         sender.sendMessage(msg("admin.help.doctor", null, "§f/djeconomy doctor §7- Run system diagnostics"));
+        sender.sendMessage(msg("admin.help.gui", null, "§f/djeconomy gui §7- Open the Admin Economy GUI"));
         sender.sendMessage(msg("admin.help.setlevel", null, "§f/djeconomy setlevel <player> <job> <level> §7- Set player's job level (supports offline)"));
         sender.sendMessage(msg("admin.help.getlevel", null, "§f/djeconomy getlevel <player> <job> §7- Show player's job level (supports offline)"));
         sender.sendMessage(msg("admin.help.resetlevel", null, "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"));
@@ -522,6 +544,25 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return System.currentTimeMillis();
     }
 
+    /**
+     * Obtain the AdminConfirmationManager, falling back to a local instance when the plugin
+     * (often a Mockito mock in tests) does not provide one. This guarantees confirmation
+     * gating works consistently across runtime and tests.
+     */
+    private AdminConfirmationManager getOrCreateConfirmationManager() {
+        AdminConfirmationManager mgr = null;
+        try {
+            mgr = plugin.getAdminConfirmationManager();
+        } catch (Throwable ignored) {}
+        if (mgr == null) {
+            if (localAdminConfirm == null) {
+                localAdminConfirm = new AdminConfirmationManager(plugin);
+            }
+            return localAdminConfirm;
+        }
+        return mgr;
+    }
+
     // --- Config accessors for confirmation settings ---
     private double getConfirmThreshold() {
         // Use the overload with default so tests can stub (path, default) and reload reflects new values.
@@ -537,14 +578,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return v <= 0 ? 30 : v;
     }
 
-    private long getConfirmExpiryMillis() {
-        return getConfirmExpirySeconds() * 1000L;
-    }
-
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> base = Arrays.asList("reload", "doctor", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
+            List<String> base = Arrays.asList("reload", "doctor", "gui", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
             String pref = args[0].toLowerCase();
             return base.stream()
                 .filter(s -> s.toLowerCase().startsWith(pref))
@@ -634,44 +671,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return out;
     }
 
-    /**
-     * Helper to send a standardized diagnostic check line (PASS/WARN/FAIL) with optional tip, and log to console.
-     */
-    private void sendDiagnosticCheck(CommandSender sender, String name, String statusKey, String tipSuggestion) {
-        // Localize status label
-        String statusLabel;
-        if ("pass".equalsIgnoreCase(statusKey)) {
-            statusLabel = msg("admin.doctor.checks.status.pass", null, "§aPASS");
-        } else if ("warn".equalsIgnoreCase(statusKey)) {
-            statusLabel = msg("admin.doctor.checks.status.warn", null, "§eWARN");
-        } else {
-            statusLabel = msg("admin.doctor.checks.status.fail", null, "§cFAIL");
-            statusKey = "fail"; // normalize
-        }
-
-        Map<String, String> ph = new HashMap<>();
-        ph.put("name", name);
-        ph.put("status", statusLabel);
-        sender.sendMessage(msg("admin.doctor.checks.item", ph, "§7%name%: %status%"));
-
-        if (tipSuggestion != null && !tipSuggestion.isEmpty()) {
-            Map<String, String> tph = new HashMap<>();
-            tph.put("suggestion", tipSuggestion);
-            sender.sendMessage(msg("admin.doctor.checks.tip", tph, "§8Tip: §7%suggestion%"));
-        }
-
-        // Also mirror to console for visibility
-        try {
-            String plain = name + ": " + statusLabel.replace('§', '&');
-            if ("fail".equalsIgnoreCase(statusKey)) {
-                plugin.getLogger().severe(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
-            } else if ("warn".equalsIgnoreCase(statusKey)) {
-                plugin.getLogger().warning(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
-            } else {
-                plugin.getLogger().info(plain + (tipSuggestion != null ? " | Tip: " + tipSuggestion : ""));
-            }
-        } catch (Throwable ignored) {}
-    }
+    
 
     private boolean isSubAllowed(CommandSender sender, String sub) {
         // In tests, sender may be null; allow all suggestions in that case
@@ -688,6 +688,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 return "djeconomy.system.reload";
             case "doctor":
                 return "djeconomy.system.doctor";
+            case "gui":
+                return "djeconomy.gui.admin.economy";
             case "economy":
             case "confirm":
                 return "djeconomy.admin.economy";
@@ -713,243 +715,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleDoctor(CommandSender sender, String prefix) {
-        sender.sendMessage(msg("admin.doctor.header", null, "§6Dynamic Jobs & Economy - System Doctor"));
-
-        // Basic environment info
-        String version = "unknown";
-        try {
-            if (plugin.getDescription() != null) {
-                version = plugin.getDescription().getVersion();
-            }
-        } catch (Throwable ignored) {}
-        Map<String, String> ph = new HashMap<>();
-        ph.put("version", version);
-        sender.sendMessage(msg("admin.doctor.env.version", ph, "§7Plugin version: §f%version%"));
-        try {
-            ph = new HashMap<>();
-            ph.put("server", Bukkit.getVersion());
-            sender.sendMessage(msg("admin.doctor.env.server", ph, "§7Server: §f%server%"));
-        } catch (Throwable ignored) {}
-        try {
-            ph = new HashMap<>();
-            ph.put("players", String.valueOf(getOnlinePlayers().size()));
-            sender.sendMessage(msg("admin.doctor.env.players", ph, "§7Online players: §f%players%"));
-        } catch (Throwable ignored) {}
-
-        // Server performance (Paper only; via reflection when available)
-        try {
-            Object server = Bukkit.getServer();
-            java.lang.reflect.Method getTPS = server.getClass().getMethod("getTPS");
-            double[] tps = (double[]) getTPS.invoke(server);
-            ph = new HashMap<>();
-            ph.put("tps1", String.format("%.2f", tps.length > 0 ? tps[0] : 20.0));
-            ph.put("tps5", String.format("%.2f", tps.length > 1 ? tps[1] : 20.0));
-            ph.put("tps15", String.format("%.2f", tps.length > 2 ? tps[2] : 20.0));
-            sender.sendMessage(msg("admin.doctor.perf.tps", ph, "§7TPS: §f%tps1%§7, §f%tps5%§7, §f%tps15%"));
-        } catch (Throwable ignored) {}
-        try {
-            Object server = Bukkit.getServer();
-            java.lang.reflect.Method getMspt = server.getClass().getMethod("getAverageTickTime");
-            double mspt = (double) getMspt.invoke(server);
-            ph = new HashMap<>();
-            ph.put("mspt", String.format("%.2f", mspt));
-            sender.sendMessage(msg("admin.doctor.perf.mspt", ph, "§7MSPT: §f%mspt%"));
-        } catch (Throwable ignored) {}
-
-        // Database health check
-        String dbType = "unknown";
-        boolean dbOk = false;
-        long start = nowMillis();
-        try {
-            if (plugin.getDatabaseManager() != null) {
-                dbType = plugin.getDatabaseManager().getDatabaseType();
-                try (Connection conn = plugin.getDatabaseManager().getConnection()) {
-                    if (conn != null) {
-                        try (PreparedStatement ps = conn.prepareStatement("SELECT 1")) {
-                            dbOk = ps.execute();
-                        }
-                    }
-                }
-            }
-        } catch (SQLException ignored) {
-            dbOk = false;
-        }
-        long dur = nowMillis() - start;
-        ph = new HashMap<>();
-        ph.put("type", dbType);
-        ph.put("status", dbOk ? "§aOK" : "§cERROR");
-        ph.put("ms", String.valueOf(dur));
-        sender.sendMessage(msg("admin.doctor.db.summary", ph, "§7Database: §f%type% §7- %status% §8(%ms%ms)"));
-
-        // Database pool stats (if available)
-        if (plugin.getDatabaseManager() != null) {
-            int active = 0, pooled = 0, max = 0, min = 0;
-            try {
-                active = plugin.getDatabaseManager().getActiveConnectionsCount();
-                pooled = plugin.getDatabaseManager().getPoolSize();
-                max = plugin.getDatabaseManager().getMaxPoolSize();
-                min = plugin.getDatabaseManager().getMinPoolSize();
-            } catch (Throwable ignored) {}
-            ph = new HashMap<>();
-            ph.put("active", String.valueOf(active));
-            ph.put("pool", String.valueOf(pooled));
-            ph.put("max", String.valueOf(max));
-            ph.put("min", String.valueOf(min));
-            sender.sendMessage(msg("admin.doctor.db.pool", ph, "§7DB Pool: §factive=%active%§7, pooled=%pool%§7, min=%min%§7, max=%max%"));
-        }
-
-        // SQLite file info (if applicable)
-        if ("sqlite".equalsIgnoreCase(dbType)) {
-            try {
-                File dbFile = new File(plugin.getDataFolder(), "database.db");
-                ph = new HashMap<>();
-                ph.put("path", dbFile.getAbsolutePath());
-                sender.sendMessage(msg("admin.doctor.sqlite.path", ph, "§7SQLite file: §f%path%"));
-                if (dbFile.exists()) {
-                    long bytes = dbFile.length();
-                    double mb = bytes / 1024.0 / 1024.0;
-                    ph = new HashMap<>();
-                    ph.put("size", String.format("%.2fMB", mb));
-                    sender.sendMessage(msg("admin.doctor.sqlite.size", ph, "§7SQLite size: §f%size%"));
-                }
-            } catch (Throwable ignored) {}
-        }
-
-        // Economy integration check
-        boolean vaultPref = false;
-        try { vaultPref = plugin.getConfig().getBoolean("integrations.vault.use_vault_economy", true); } catch (Throwable ignored) {}
-        boolean vaultEnabled = plugin.getEconomyManager() != null && plugin.getEconomyManager().isVaultEnabled();
-        if (vaultEnabled) {
-            String provider = plugin.getEconomyManager().getVaultProviderName();
-            ph = new HashMap<>();
-            ph.put("provider", provider != null ? provider : "Unknown");
-            sender.sendMessage(msg("admin.doctor.economy.vault", ph, "§7Economy: §fVault §7(Provider: §f%provider%§7) - §aENABLED"));
-        } else {
-            String def = vaultPref
-                ? "§7Economy: §fInternal §7- §eUsing internal (Vault preferred but not available)"
-                : "§7Economy: §fInternal §7- §aENABLED";
-            sender.sendMessage(msg(vaultPref ? "admin.doctor.economy.internal_preferred" : "admin.doctor.economy.internal", null, def));
-        }
-
-        // Managers presence
-        boolean ok = true;
-        if (plugin.getEconomyManager() == null) { ph = new HashMap<>(); ph.put("name", "EconomyManager"); sender.sendMessage(msg("admin.doctor.manager_missing", ph, "§7%name%: §cMISSING")); ok = false; }
-        if (plugin.getDatabaseManager() == null) { ph = new HashMap<>(); ph.put("name", "DatabaseManager"); sender.sendMessage(msg("admin.doctor.manager_missing", ph, "§7%name%: §cMISSING")); ok = false; }
-
-        // Runtime info
-        try {
-            ph = new HashMap<>();
-            ph.put("java", System.getProperty("java.version", "unknown"));
-            sender.sendMessage(msg("admin.doctor.runtime.java", ph, "§7Java: §f%java%"));
-        } catch (Throwable ignored) {}
-        try {
-            Runtime rt = Runtime.getRuntime();
-            long total = rt.totalMemory();
-            long free = rt.freeMemory();
-            long used = total - free;
-            long max = rt.maxMemory();
-            ph = new HashMap<>();
-            ph.put("used", String.valueOf(used / (1024 * 1024)));
-            ph.put("total", String.valueOf(total / (1024 * 1024)));
-            ph.put("max", String.valueOf(max / (1024 * 1024)));
-            sender.sendMessage(msg("admin.doctor.runtime.memory", ph, "§7Memory: §f%used%MB§7/%total%MB (max %max%MB)"));
-        } catch (Throwable ignored) {}
-
-        // Config highlights
-        try {
-            ph = new HashMap<>();
-            ph.put("vault_prefer", String.valueOf(vaultPref));
-            sender.sendMessage(msg("admin.doctor.config.vault_prefer", ph, "§7Config: §fintegrations.vault.use_vault_economy=%vault_prefer%"));
-        } catch (Throwable ignored) {}
-
-        // --- Detailed validation checks (PASS/WARN/FAIL) ---
-        try {
-            // 1) Database Connectivity
-            if (plugin.getDatabaseManager() == null) {
-                sendDiagnosticCheck(sender, "Database Connectivity", "fail", "DatabaseManager unavailable. Check database.type in config.yml and restart.");
-            } else if (dbOk) {
-                sendDiagnosticCheck(sender, "Database Connectivity", "pass", null);
-            } else {
-                sendDiagnosticCheck(sender, "Database Connectivity", "fail", "Cannot query database. Verify credentials/URL and that the server is reachable.");
-            }
-
-            // 2) Database Latency (SELECT 1 duration)
-            if (dbOk) {
-                if (dur < 200) {
-                    sendDiagnosticCheck(sender, "Database Latency", "pass", null);
-                } else if (dur < 1000) {
-                    sendDiagnosticCheck(sender, "Database Latency", "warn", "High latency (%d ms). Consider tuning DB or network.".replace("%d", String.valueOf(dur)));
-                } else {
-                    sendDiagnosticCheck(sender, "Database Latency", "warn", "Very high latency (%d ms). Consider switching to MySQL or optimizing storage/network.".replace("%d", String.valueOf(dur)));
-                }
-            }
-
-            // 3) MySQL Config Keys (if mysql)
-            if ("mysql".equalsIgnoreCase(dbType)) {
-                String host = plugin.getConfig().getString("database.mysql.host", "");
-                String dbName = plugin.getConfig().getString("database.mysql.database", "");
-                String username = plugin.getConfig().getString("database.mysql.username", "");
-                int port = 0;
-                try { port = plugin.getConfig().getInt("database.mysql.port", 0); } catch (Throwable ignored2) {}
-                List<String> missing = new ArrayList<>();
-                if (host == null || host.trim().isEmpty()) missing.add("host");
-                if (dbName == null || dbName.trim().isEmpty()) missing.add("database");
-                if (username == null || username.trim().isEmpty()) missing.add("username");
-                if (port <= 0) missing.add("port");
-                if (missing.isEmpty()) {
-                    sendDiagnosticCheck(sender, "MySQL Config", "pass", null);
-                } else {
-                    sendDiagnosticCheck(sender, "MySQL Config", "fail", "Missing/invalid keys: " + String.join(", ", missing) + ". Set database.mysql.* in config.yml.");
-                }
-            }
-
-            // 4) SQLite File Presence (if sqlite)
-            if ("sqlite".equalsIgnoreCase(dbType)) {
-                try {
-                    File dbFile = new File(plugin.getDataFolder(), "database.db");
-                    if (dbFile.exists() && dbFile.length() >= 0) {
-                        sendDiagnosticCheck(sender, "SQLite File", "pass", null);
-                    } else {
-                        sendDiagnosticCheck(sender, "SQLite File", "fail", "database.db not found. Ensure plugin can write to its data folder.");
-                    }
-                } catch (Throwable t) {
-                    sendDiagnosticCheck(sender, "SQLite File", "fail", "Could not inspect SQLite file: " + t.getMessage());
-                }
-            }
-
-            // 5) Economy Integration vs Preference
-            if (plugin.getEconomyManager() == null) {
-                sendDiagnosticCheck(sender, "Economy Manager", "fail", "Economy system unavailable. If using Vault, install Vault and an economy provider; otherwise use internal economy.");
-            } else if (vaultPref) {
-                if (vaultEnabled) {
-                    sendDiagnosticCheck(sender, "Economy Integration (Vault)", "pass", null);
-                } else {
-                    sendDiagnosticCheck(sender, "Economy Integration (Vault)", "warn", "Vault preferred but not enabled. Install/enable Vault and a provider.");
-                }
-            } else {
-                sendDiagnosticCheck(sender, "Economy Integration (Internal)", "pass", null);
-            }
-
-            // 6) Admin Confirmation Settings
-            double threshold = -1.0;
-            int expiry = -1;
-            try { threshold = plugin.getConfig().getDouble("economy.admin_confirmation.threshold", -1.0); } catch (Throwable ignored2) {}
-            try { expiry = plugin.getConfig().getInt("economy.admin_confirmation.expiry_seconds", -1); } catch (Throwable ignored2) {}
-            if (threshold > 0) {
-                sendDiagnosticCheck(sender, "Admin Confirmation Threshold", "pass", null);
-            } else {
-                sendDiagnosticCheck(sender, "Admin Confirmation Threshold", "warn", "Set economy.admin_confirmation.threshold to a positive number to avoid accidental large payouts.");
-            }
-            if (expiry > 0) {
-                sendDiagnosticCheck(sender, "Admin Confirmation Expiry", "pass", null);
-            } else {
-                sendDiagnosticCheck(sender, "Admin Confirmation Expiry", "warn", "Set economy.admin_confirmation.expiry_seconds to a positive number (e.g., 30).");
-            }
-        } catch (Throwable ignored) {}
-
-        // Summary
-        sender.sendMessage(msg(ok && dbOk ? "admin.doctor.summary.ok" : "admin.doctor.summary.issues", null,
-            ok && dbOk ? "§aAll critical systems are operational." : "§eDiagnostics complete. See above for issues."));
+        // Delegate to the new DoctorCommandExecutor for maintainability and testing
+        new DoctorCommandExecutor(plugin).execute(sender);
     }
 
     private void handleBusinessInfo(CommandSender sender, String[] args, String prefix) {

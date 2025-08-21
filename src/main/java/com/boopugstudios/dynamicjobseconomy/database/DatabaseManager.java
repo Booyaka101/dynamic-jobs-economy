@@ -37,8 +37,6 @@ public class DatabaseManager {
                     return initializeSQLite();
                 case "mysql":
                     return initializeMySQL();
-                case "mongodb":
-                    return initializeMongoDB();
                 default:
                     plugin.getLogger().severe("Unknown database type: " + databaseType);
                     return false;
@@ -76,11 +74,7 @@ public class DatabaseManager {
         return true;
     }
     
-    private boolean initializeMongoDB() {
-        // MongoDB implementation would go here
-        plugin.getLogger().info("MongoDB support is not yet implemented. Using SQL database instead.");
-        return false;
-    }
+    
     
     private void createTables() throws SQLException {
         boolean isSQLite = "sqlite".equalsIgnoreCase(databaseType);
@@ -630,9 +624,6 @@ public class DatabaseManager {
                     return createSQLiteConnection();
                 case "mysql":
                     return createMySQLConnection();
-                case "mongodb":
-                    // MongoDB doesn't use SQL connections, return null
-                    return null;
                 default:
                     plugin.getLogger().severe("Unknown database type for connection creation: " + databaseType);
                     return null;
@@ -706,19 +697,17 @@ public class DatabaseManager {
      * Initialize minimum connections in the pool for better performance
      */
     public void initializeConnectionPool() {
-        if (!databaseType.equals("mongodb")) { // Only for SQL databases
-            plugin.getLogger().info("Initializing database connection pool...");
-            
-            for (int i = 0; i < MIN_POOL_SIZE; i++) {
-                Connection conn = createNewConnection();
-                if (conn != null) {
-                    connectionPool.offer(conn);
-                    activeConnections.incrementAndGet();
-                }
+        plugin.getLogger().info("Initializing database connection pool...");
+
+        for (int i = 0; i < MIN_POOL_SIZE; i++) {
+            Connection conn = createNewConnection();
+            if (conn != null) {
+                connectionPool.offer(conn);
+                activeConnections.incrementAndGet();
             }
-            
-            plugin.getLogger().info("Connection pool initialized with " + connectionPool.size() + " connections");
         }
+
+        plugin.getLogger().info("Connection pool initialized with " + connectionPool.size() + " connections");
     }
     
     public String getDatabaseType() {

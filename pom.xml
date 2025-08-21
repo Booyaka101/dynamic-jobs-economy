@@ -37,7 +37,12 @@
                 <version>3.2.5</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <!-- JUnit 5 tag filtering: skip @Tag("integration") tests by default -->
                     <excludedGroups>integration</excludedGroups>
+                    <!-- Additionally, exclude all *IntegrationTest classes entirely for local runs -->
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
                     <!-- Prevent indefinitely hung test JVMs -->
                     <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
                     <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
@@ -56,6 +61,18 @@
                         </goals>
                         <configuration>
                             <skip>${shade.skip}</skip>
+                            <minimizeJar>true</minimizeJar>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.protobuf</pattern>
+                                    <shadedPattern>com.boopugstudios.shaded.protobuf</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.sqlite</pattern>
+                                    <shadedPattern>com.boopugstudios.shaded.sqlite</shadedPattern>
+                                </relocation>
+                            </relocations>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -63,10 +80,16 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/NOTICE*</exclude>
+                                        <exclude>META-INF/LICENSE*</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>META-INF/INDEX.LIST</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
@@ -139,6 +162,13 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Mockito JUnit Jupiter extension -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
              
         <!-- Vault API -->
         <dependency>
@@ -166,12 +196,7 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.42.0.0</version>
         </dependency>
-        <!-- MongoDB -->
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-            <version>4.10.2</version>
-        </dependency>
+        
         <!-- Testcontainers for database integration tests -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -198,8 +223,39 @@
                         <version>3.2.5</version>
                         <configuration combine.self="override">
                             <useModulePath>false</useModulePath>
+                            <!-- Run only integration-tagged tests when profile is active -->
                             <groups>integration</groups>
+                            <!-- Exclude tests that require Docker (e.g., Testcontainers MySQL) -->
+                            <excludedGroups>docker</excludedGroups>
+                            <!-- Include all integration test classes -->
+                            <includes>
+                                <include>**/*IntegrationTest.java</include>
+                            </includes>
                             <!-- Prevent indefinitely hung test JVMs in ITs (e.g., Testcontainers issues) -->
+                            <forkedProcessTimeoutInSeconds>2400</forkedProcessTimeoutInSeconds>
+                            <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>integration-tests-docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration combine.self="override">
+                            <useModulePath>false</useModulePath>
+                            <!-- Run integration tests including docker-tagged tests -->
+                            <groups>integration,docker</groups>
+                            <!-- Include all integration test classes -->
+                            <includes>
+                                <include>**/*IntegrationTest.java</include>
+                            </includes>
+                            <!-- Generous timeouts for container start-ups -->
                             <forkedProcessTimeoutInSeconds>2400</forkedProcessTimeoutInSeconds>
                             <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
                         </configuration>
@@ -223,14 +279,20 @@
                                 <configuration combine.self="override">
                                     <minimizeJar>true</minimizeJar>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <relocations>
+                                        <relocation>
+                                            <pattern>com.google.protobuf</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.protobuf</shadedPattern>
+                                        </relocation>
+                                        <relocation>
+                                            <pattern>org.sqlite</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.sqlite</shadedPattern>
+                                        </relocation>
+                                    </relocations>
                                     <artifactSet>
                                         <excludes>
                                             <!-- Keep MySQL driver; exclude others for smallest working JAR -->
                                             <exclude>org.xerial:sqlite-jdbc</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-sync</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-core</exclude>
-                                            <exclude>org.mongodb:bson</exclude>
-                                            <exclude>org.mongodb:bson-record-codec</exclude>
                                             <exclude>com.google.protobuf:protobuf-java</exclude>
                                         </excludes>
                                     </artifactSet>
@@ -243,9 +305,14 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                                 <exclude>META-INF/NOTICE*</exclude>
                                                 <exclude>META-INF/LICENSE*</exclude>
+                                                <exclude>META-INF/MANIFEST.MF</exclude>
+                                                <exclude>META-INF/INDEX.LIST</exclude>
                                             </excludes>
                                         </filter>
                                     </filters>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
                                 </configuration>
                             </execution>
                         </executions>
@@ -269,13 +336,19 @@
                                 <configuration combine.self="override">
                                     <minimizeJar>true</minimizeJar>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <relocations>
+                                        <relocation>
+                                            <pattern>com.google.protobuf</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.protobuf</shadedPattern>
+                                        </relocation>
+                                        <relocation>
+                                            <pattern>org.sqlite</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.sqlite</shadedPattern>
+                                        </relocation>
+                                    </relocations>
                                     <artifactSet>
                                         <excludes>
                                             <exclude>com.mysql:mysql-connector-j</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-sync</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-core</exclude>
-                                            <exclude>org.mongodb:bson</exclude>
-                                            <exclude>org.mongodb:bson-record-codec</exclude>
                                             <exclude>com.google.protobuf:protobuf-java</exclude>
                                         </excludes>
                                     </artifactSet>
@@ -300,9 +373,14 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                                 <exclude>META-INF/NOTICE*</exclude>
                                                 <exclude>META-INF/LICENSE*</exclude>
+                                                <exclude>META-INF/MANIFEST.MF</exclude>
+                                                <exclude>META-INF/INDEX.LIST</exclude>
                                             </excludes>
                                         </filter>
                                     </filters>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
                                 </configuration>
                             </execution>
                         </executions>
@@ -332,15 +410,21 @@
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadedArtifactAttached>true</shadedArtifactAttached>
                                     <shadedClassifierName>spigot-ultra</shadedClassifierName>
+                                    <relocations>
+                                        <relocation>
+                                            <pattern>com.google.protobuf</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.protobuf</shadedPattern>
+                                        </relocation>
+                                        <relocation>
+                                            <pattern>org.sqlite</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.sqlite</shadedPattern>
+                                        </relocation>
+                                    </relocations>
                                     <artifactSet>
                                         <excludes>
                                             <!-- Exclude all DB drivers for smallest upload; requires external DB (MySQL) -->
                                             <exclude>org.xerial:sqlite-jdbc</exclude>
                                             <exclude>com.mysql:mysql-connector-j</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-sync</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-core</exclude>
-                                            <exclude>org.mongodb:bson</exclude>
-                                            <exclude>org.mongodb:bson-record-codec</exclude>
                                             <exclude>com.google.protobuf:protobuf-java</exclude>
                                         </excludes>
                                     </artifactSet>
@@ -353,9 +437,14 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                                 <exclude>META-INF/NOTICE*</exclude>
                                                 <exclude>META-INF/LICENSE*</exclude>
+                                                <exclude>META-INF/MANIFEST.MF</exclude>
+                                                <exclude>META-INF/INDEX.LIST</exclude>
                                             </excludes>
                                         </filter>
                                     </filters>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
                                 </configuration>
                             </execution>
                         </executions>
@@ -385,14 +474,20 @@
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadedArtifactAttached>true</shadedArtifactAttached>
                                     <shadedClassifierName>spigot-lite</shadedClassifierName>
+                                    <relocations>
+                                        <relocation>
+                                            <pattern>com.google.protobuf</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.protobuf</shadedPattern>
+                                        </relocation>
+                                        <relocation>
+                                            <pattern>org.sqlite</pattern>
+                                            <shadedPattern>com.boopugstudios.shaded.sqlite</shadedPattern>
+                                        </relocation>
+                                    </relocations>
                                     <artifactSet>
                                         <excludes>
                                             <!-- Exclude heavy optional drivers from the Spigot upload build -->
                                             <exclude>com.mysql:mysql-connector-j</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-sync</exclude>
-                                            <exclude>org.mongodb:mongodb-driver-core</exclude>
-                                            <exclude>org.mongodb:bson</exclude>
-                                            <exclude>org.mongodb:bson-record-codec</exclude>
                                             <exclude>com.google.protobuf:protobuf-java</exclude>
                                         </excludes>
                                     </artifactSet>
@@ -405,9 +500,14 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                                 <exclude>META-INF/NOTICE*</exclude>
                                                 <exclude>META-INF/LICENSE*</exclude>
+                                                <exclude>META-INF/MANIFEST.MF</exclude>
+                                                <exclude>META-INF/INDEX.LIST</exclude>
                                             </excludes>
                                         </filter>
                                     </filters>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
                                 </configuration>
                             </execution>
                         </executions>

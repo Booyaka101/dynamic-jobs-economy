@@ -160,6 +160,8 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
   Manage player money; supports online/offline. (perm: djeconomy.admin.economy)
   - Negative amounts rejected; extremely large amounts rejected.
   - Large amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`.
+  - If attempting to take more than the player's balance, the message shown is: `§cPlayer only has $<amount>!` (amount formatted to two decimals).
+  - Messages are localized via `src/main/resources/messages.yml` using keys: `admin.give_success`, `admin.take_insufficient`, `admin.take_success`, `admin.set_success`.
 
 /djeconomy confirm
   Confirm the last pending large economy action. (perm: djeconomy.admin.economy)
@@ -191,7 +193,7 @@ Notes:
 ### **🛠️ Admin Setup Quick Reference**
 
 - Vault (optional): Install Vault and a compatible economy plugin. In `config.yml` set `integrations.vault.enabled: true` and `integrations.vault.use_vault_economy: true`. Without Vault, the internal economy is used.
-- Database: Default `sqlite`. For MySQL or MongoDB, update `database` in `config.yml`:
+- Database: Default `sqlite`. For MySQL, update `database` in `config.yml`:
   ```yaml
   database:
     type: mysql
@@ -202,17 +204,32 @@ Notes:
       username: your_user
       password: your_pass
       useSSL: false
-  # or
-  database:
-    type: mongodb
-    mongodb:
-      connection_string: "mongodb://localhost:27017/dynamicjobs"
   ```
 - Permissions:
   - Admin: `djeconomy.admin`
   - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
   - Player GUI: `djeconomy.gui.access`
 - Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. Use `/djeconomy confirm` to finalize large operations.
+
+### **🧪 Admin Testing**
+
+- __Unit tests__ (fast):
+  ```bash
+  mvn test
+  ```
+
+- __Integration tests (SQLite only)__:
+  ```bash
+  mvn -P integration-tests test
+  ```
+  Runs tests tagged `integration` while excluding those tagged `docker`.
+
+- __Integration tests including Docker (MySQL via Testcontainers)__:
+  - Windows PowerShell:
+    ```powershell
+    $env:DJE_DOCKER='true'; mvn -P integration-tests-docker test; Remove-Item Env:DJE_DOCKER
+    ```
+  The MySQL test is additionally guarded by `@EnabledIfEnvironmentVariable(name = "DJE_DOCKER", matches = "true")` to avoid accidental Docker startup on machines without Docker.
 
 ### **🆘 Troubleshooting**
 

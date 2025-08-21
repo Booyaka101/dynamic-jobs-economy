@@ -2,6 +2,7 @@ package com.boopugstudios.dynamicjobseconomy.gui;
 
 import com.boopugstudios.dynamicjobseconomy.business.*;
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.util.EconomyFormat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -189,7 +190,7 @@ public class BusinessGUI implements Listener {
                 Arrays.asList(ChatColor.GRAY + "Manage business employees", 
                              ChatColor.YELLOW + "Click to open employee panel")));
         
-        gui.setItem(21, createMenuItem(Material.GOLD_INGOT, ChatColor.GOLD + "Revenue: $" + String.format("%.2f", business.getBalance()), 
+        gui.setItem(21, createMenuItem(Material.GOLD_INGOT, ChatColor.GOLD + "Revenue: " + EconomyFormat.money(business.getBalance()), 
                 Arrays.asList(ChatColor.GRAY + "Business financial overview", 
                              ChatColor.YELLOW + "Click for detailed revenue report")));
         
@@ -238,7 +239,7 @@ public class BusinessGUI implements Listener {
         List<String> lore = Arrays.asList(
                 ChatColor.GRAY + "Type: " + ChatColor.WHITE + business.getType(),
                 ChatColor.GRAY + "Employees: " + ChatColor.WHITE + business.getEmployees().size(),
-                ChatColor.GRAY + "Balance: " + ChatColor.GOLD + "$" + String.format("%.2f", business.getBalance()),
+                ChatColor.GRAY + "Balance: " + ChatColor.GOLD + EconomyFormat.money(business.getBalance()),
                 ChatColor.GRAY + "Revenue Model: " + ChatColor.YELLOW + business.getRevenueModel().getDisplayName(),
                 "",
                 ChatColor.YELLOW + "Click to manage this business"
@@ -708,9 +709,9 @@ public class BusinessGUI implements Listener {
                 totalExpenses += expenses;
                 
                 List<String> lore = Arrays.asList(
-                    "§7Revenue: §a$" + String.format("%.2f", revenue),
-                    "§7Expenses: §c$" + String.format("%.2f", expenses),
-                    "§7Profit: " + (revenue - expenses >= 0 ? "§a" : "§c") + "$" + String.format("%.2f", revenue - expenses),
+                    "§7Revenue: §a" + EconomyFormat.money(revenue),
+                    "§7Expenses: §c" + EconomyFormat.money(expenses),
+                    "§7Profit: " + (revenue - expenses >= 0 ? "§a" : "§c") + EconomyFormat.money(revenue - expenses),
                     "§7Revenue Model: §e" + business.getRevenueModel().getDisplayName(),
                     "",
                     "§eClick for detailed breakdown"
@@ -724,9 +725,9 @@ public class BusinessGUI implements Listener {
             inventory.setItem(40, createMenuItem(Material.GOLD_INGOT, 
                 "§6Total Summary", 
                 Arrays.asList(
-                    "§7Total Revenue: §a$" + String.format("%.2f", totalRevenue),
-                    "§7Total Expenses: §c$" + String.format("%.2f", totalExpenses),
-                    "§7Net Profit: " + (totalRevenue - totalExpenses >= 0 ? "§a" : "§c") + "$" + String.format("%.2f", totalRevenue - totalExpenses)
+                    "§7Total Revenue: §a" + EconomyFormat.money(totalRevenue),
+                    "§7Total Expenses: §c" + EconomyFormat.money(totalExpenses),
+                    "§7Net Profit: " + (totalRevenue - totalExpenses >= 0 ? "§a" : "§c") + EconomyFormat.money(totalRevenue - totalExpenses)
                 )));
         }
         
@@ -875,7 +876,7 @@ public class BusinessGUI implements Listener {
                     for (ConstructionContract contract : contracts.subList(0, Math.min(3, contracts.size()))) {
                         lore.add("§8• §f" + contract.getType().getDisplayName());
                         lore.add("§8  Status: §e" + contract.getStatus().getDisplayName());
-                        lore.add("§8  Value: §6$" + String.format("%.2f", contract.getTotalCost()));
+                        lore.add("§8  Value: §6" + EconomyFormat.money(contract.getTotalCost()));
                     }
                     if (contracts.size() > 3) {
                         lore.add("§8• §7... and " + (contracts.size() - 3) + " more");
@@ -931,7 +932,7 @@ public class BusinessGUI implements Listener {
                     for (BusinessEmployee employee : employees.subList(0, Math.min(3, employees.size()))) {
                         lore.add("§8• §f" + employee.getPlayerName());
                         lore.add("§8  Position: §e" + employee.getPosition());
-                        lore.add("§8  Salary: §6$" + String.format("%.2f", employee.getSalary()));
+                        lore.add("§8  Salary: §6" + EconomyFormat.money(employee.getSalary()));
                     }
                     if (employees.size() > 3) {
                         lore.add("§8• §7... and " + (employees.size() - 3) + " more");
@@ -978,9 +979,9 @@ public class BusinessGUI implements Listener {
             
             List<String> lore = Arrays.asList(
                 "§7Type: §e" + type.substring(0, 1).toUpperCase() + type.substring(1),
-                "§7Creation Cost: §6$" + plugin.getConfig().getDouble("business.creation_cost", 5000),
+                "§7Creation Cost: §6" + EconomyFormat.money(plugin.getConfig().getDouble("business.creation_cost", 5000)),
                 "§7Max Employees: §b" + plugin.getConfig().getInt("business.types." + type + ".max_employees", 5),
-                "§7Daily Upkeep: §c$" + plugin.getConfig().getDouble("business.types." + type + ".daily_upkeep", 100),
+                "§7Daily Upkeep: §c" + EconomyFormat.money(plugin.getConfig().getDouble("business.types." + type + ".daily_upkeep", 100)),
                 "",
                 "§eClick to create this business type",
                 "§7Use: /business create <name> " + type
@@ -1032,7 +1033,7 @@ public class BusinessGUI implements Listener {
                 
                 List<String> lore = Arrays.asList(
                     "§7Position: §e" + employee.getPosition(),
-                    "§7Salary: §a$" + String.format("%.2f", employee.getSalary()) + "/day",
+                    "§7Salary: §a" + EconomyFormat.money(employee.getSalary()) + "/day",
                     "§7Status: " + (employee.isActive() ? "§aActive" : "§cInactive"),
                     "§7Hired: §b" + new java.util.Date(employee.getHiredAt()).toString(),
                     "",
@@ -1050,8 +1051,8 @@ public class BusinessGUI implements Listener {
         inventory.setItem(37, createMenuItem(Material.WRITABLE_BOOK, "§eManage Positions", 
             Arrays.asList("§7View and edit business positions", "§eClick to manage")));
         inventory.setItem(38, createMenuItem(Material.GOLD_INGOT, "§6Payroll Summary", 
-            Arrays.asList("§7Total Daily Payroll: §a$" + 
-                String.format("%.2f", employees.stream().mapToDouble(BusinessEmployee::getSalary).sum()))));
+            Arrays.asList("§7Total Daily Payroll: §a" + EconomyFormat.money(
+                employees.stream().mapToDouble(BusinessEmployee::getSalary).sum()))));
         
         // Back button
         inventory.setItem(44, createMenuItem(Material.ARROW, "§cBack to Business Menu", 
@@ -1080,33 +1081,33 @@ public class BusinessGUI implements Listener {
         
         // Revenue summary
         inventory.setItem(10, createMenuItem(Material.GOLD_INGOT, "§6Daily Revenue", 
-            Arrays.asList("§7Amount: §a$" + String.format("%.2f", dailyRevenue),
+            Arrays.asList("§7Amount: §a" + EconomyFormat.money(dailyRevenue),
                          "§7Trend: " + (dailyRevenue > 0 ? "§a↑ Positive" : "§c↓ Negative"))));
         
         inventory.setItem(11, createMenuItem(Material.GOLD_BLOCK, "§6Weekly Revenue", 
-            Arrays.asList("§7Amount: §a$" + String.format("%.2f", weeklyRevenue),
-                         "§7Average/Day: §e$" + String.format("%.2f", weeklyRevenue / 7))));
+            Arrays.asList("§7Amount: §a" + EconomyFormat.money(weeklyRevenue),
+                         "§7Average/Day: §e" + EconomyFormat.money(weeklyRevenue / 7))));
         
         inventory.setItem(12, createMenuItem(Material.DIAMOND, "§6Monthly Revenue", 
-            Arrays.asList("§7Amount: §a$" + String.format("%.2f", monthlyRevenue),
-                         "§7Average/Day: §e$" + String.format("%.2f", monthlyRevenue / 30))));
+            Arrays.asList("§7Amount: §a" + EconomyFormat.money(monthlyRevenue),
+                         "§7Average/Day: §e" + EconomyFormat.money(monthlyRevenue / 30))));
         
         // Expense breakdown
         inventory.setItem(14, createMenuItem(Material.REDSTONE, "§cDaily Expenses", 
-            Arrays.asList("§7Payroll: §c$" + String.format("%.2f", business.getDailyPayroll()),
-                         "§7Operations: §c$" + String.format("%.2f", business.getOperationalCosts()),
-                         "§7Total: §c$" + String.format("%.2f", totalExpenses))));
+            Arrays.asList("§7Payroll: §c" + EconomyFormat.money(business.getDailyPayroll()),
+                         "§7Operations: §c" + EconomyFormat.money(business.getOperationalCosts()),
+                         "§7Total: §c" + EconomyFormat.money(totalExpenses))));
         
         // Net profit
         inventory.setItem(16, createMenuItem(Material.EMERALD, "§aNet Profit", 
-            Arrays.asList("§7Daily: " + (netProfit >= 0 ? "§a" : "§c") + "$" + String.format("%.2f", netProfit),
+            Arrays.asList("§7Daily: " + (netProfit >= 0 ? "§a" : "§c") + EconomyFormat.money(netProfit),
                          "§7Status: " + (netProfit >= 0 ? "§aProfitable" : "§cLoss"))));
         
         // Revenue sources
         inventory.setItem(19, createMenuItem(Material.CHEST, "§eRevenue Sources", 
-            Arrays.asList("§7Service Revenue: §a$" + String.format("%.2f", business.getServiceRevenue()),
-                         "§7Product Sales: §a$" + String.format("%.2f", business.getProductRevenue()),
-                         "§7Contract Revenue: §a$" + String.format("%.2f", business.getContractRevenue()))));
+            Arrays.asList("§7Service Revenue: §a" + EconomyFormat.money(business.getServiceRevenue()),
+                         "§7Product Sales: §a" + EconomyFormat.money(business.getProductRevenue()),
+                         "§7Contract Revenue: §a" + EconomyFormat.money(business.getContractRevenue()))));
         
         // Back button
         inventory.setItem(44, createMenuItem(Material.ARROW, "§cBack to Business Menu", 
@@ -1141,7 +1142,7 @@ public class BusinessGUI implements Listener {
                     "§7World: §b" + location.getWorldName(),
                     "§7Region: §b" + location.getRegionName(),
                     "§7Efficiency Bonus: §a+" + String.format("%.1f", location.getEfficiencyBonus() * 100) + "%",
-                    "§7Monthly Cost: §c$" + String.format("%.2f", location.getMonthlyOperationalCost()),
+                    "§7Monthly Cost: §c" + EconomyFormat.money(location.getMonthlyOperationalCost()),
                     "",
                     "§eClick for location details"
                 );
@@ -1156,7 +1157,7 @@ public class BusinessGUI implements Listener {
             Arrays.asList("§7Use command to add location:", "§f/business add-location <type> <region>")));
         inventory.setItem(37, createMenuItem(Material.MAP, "§eLocation Summary", 
             Arrays.asList("§7Total Locations: §b" + locations.size(),
-                         "§7Total Monthly Cost: §c$" + String.format("%.2f", 
+                         "§7Total Monthly Cost: §c" + EconomyFormat.money(
                              locations.stream().mapToDouble(BusinessLocation::getMonthlyOperationalCost).sum()))));
         
         // Back button
@@ -1192,7 +1193,7 @@ public class BusinessGUI implements Listener {
                     "§7Input: §b" + chain.getInputMaterial(),
                     "§7Output: §a" + chain.getOutputMaterial(),
                     "§7Processing Time: §e" + chain.getProcessingTimeMinutes() + " minutes",
-                    "§7Profit per Cycle: §a$" + String.format("%.2f", chain.getProfitPerCycle()),
+                    "§7Profit per Cycle: §a" + EconomyFormat.money(chain.getProfitPerCycle()),
                     "§7Status: " + (chain.isActive() ? "§aActive" : "§cInactive"),
                     "",
                     "§eClick for chain details"
@@ -1209,7 +1210,7 @@ public class BusinessGUI implements Listener {
         inventory.setItem(37, createMenuItem(Material.CLOCK, "§eProcessing Summary", 
             Arrays.asList("§7Total Chains: §b" + chains.size(),
                          "§7Active Chains: §a" + chains.stream().mapToInt(c -> c.isActive() ? 1 : 0).sum(),
-                         "§7Total Hourly Profit: §a$" + String.format("%.2f", 
+                         "§7Total Hourly Profit: §a" + EconomyFormat.money(
                               chains.stream().mapToDouble(ResourceProcessingChain::getHourlyProfit).sum()))));
         
         // Back button
@@ -1242,7 +1243,7 @@ public class BusinessGUI implements Listener {
             inventory.setItem(10, createMenuItem(Material.PLAYER_HEAD, "§6" + employee.getPlayerName(), 
                 Arrays.asList(
                     "§7Position: §e" + employee.getPosition(),
-                    "§7Salary: §a$" + String.format("%.2f", employee.getSalary()) + "/day",
+                    "§7Salary: §a" + EconomyFormat.money(employee.getSalary()) + "/day",
                     "§7Status: " + (employee.isActive() ? "§aActive" : "§cInactive"),
                     "§7Hired: §b" + new java.util.Date(employee.getHiredAt()).toString()
                 )));
@@ -1286,7 +1287,7 @@ public class BusinessGUI implements Listener {
                 
                 List<String> lore = Arrays.asList(
                     "§7Title: §e" + position.getTitle(),
-                    "§7Base Salary: §a$" + String.format("%.2f", position.getBaseSalary()),
+                    "§7Base Salary: §a" + EconomyFormat.money(position.getBaseSalary()),
                     "§7Max Employees: §b" + position.getMaxEmployees(),
                     "§7Current Employees: §b" + business.getEmployeesInPosition(position.getTitle()).size(),
                     "§7Status: " + (position.isActive() ? "§aActive" : "§cInactive"),

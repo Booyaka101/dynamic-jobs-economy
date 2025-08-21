@@ -45,13 +45,6 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
         password: your_pass
         useSSL: false
     ```
-  - MongoDB example:
-    ```yaml
-    database:
-      type: mongodb
-      mongodb:
-        connection_string: "mongodb://localhost:27017/dynamicjobs"
-    ```
 
 - Permissions:
   - Admin: `djeconomy.admin`
@@ -71,6 +64,19 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - Choose the right JAR:
   - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.
   - Advanced: minimal profiles like `spigot-lite`, `spigot-linux-sqlite`, `spigot-ultra`, `spigot-ultra-mysql` offer smaller JARs with trade-offs.
+
+#### Verify download integrity (checksums)
+- CI publishes a `.sha256` file alongside each artifact.
+- Linux/macOS:
+  ```bash
+  sha256sum -c DynamicJobsEconomy-<version>.jar.sha256
+  ```
+- Windows PowerShell:
+  ```powershell
+  Get-FileHash .\DynamicJobsEconomy-<version>.jar -Algorithm SHA256
+  Get-Content .\DynamicJobsEconomy-<version>.jar.sha256
+  ```
+  Compare the hash values; they must match.
 
 ## Commands
 
@@ -128,6 +134,27 @@ CI builds the project and runs tests automatically. If you build locally, use:
 ```bash
 mvn -B package
 ```
+
+## Testing
+
+- __Unit tests only__ (fast):
+  ```bash
+  mvn test
+  ```
+
+- __Integration tests (SQLite only)__:
+  ```bash
+  mvn -P integration-tests test
+  ```
+  This runs tests tagged `integration` and excludes those tagged `docker`.
+
+- __Integration tests including Docker (MySQL via Testcontainers)__:
+  - Windows PowerShell:
+    ```powershell
+    $env:DJE_DOCKER='true'; mvn -P integration-tests-docker test; Remove-Item Env:DJE_DOCKER
+    ```
+  The MySQL Testcontainers test is additionally gated by `@EnabledIfEnvironmentVariable(name = "DJE_DOCKER", matches = "true")` to prevent accidental Docker startup on machines without Docker.
+
 
 ## Questions?
 

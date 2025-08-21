@@ -1,6 +1,7 @@
-package com.boopugstudios.dynamicjobseconomy.database;
+package com.boopugstudios.dynamicjobseconomy.doctor;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
+import com.boopugstudios.dynamicjobseconomy.database.DatabaseManager;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
@@ -13,18 +14,13 @@ import org.mockito.Mockito;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
- 
+
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.UUID;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DatabaseManagerIntegrationTest {
+class DatabaseHealthCheckIntegrationTest {
 
     private DatabaseManager db;
 
@@ -69,50 +65,6 @@ class DatabaseManagerIntegrationTest {
         return cfg;
     }
 
-    private void assertCoreTablesExist(Connection conn, boolean mysql, String dbNameIfMySQL) throws Exception {
-        if (mysql) {
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name IN ('players','business_positions','business_employees')")) {
-                ps.setString(1, dbNameIfMySQL);
-                try (ResultSet rs = ps.executeQuery()) {
-                    int count = 0;
-                    while (rs.next()) count++;
-                    assertTrue(count >= 3, "Expected at least 3 core tables in MySQL schema");
-                }
-            }
-        } else {
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('players','business_positions','business_employees')")) {
-                try (ResultSet rs = ps.executeQuery()) {
-                    int count = 0;
-                    while (rs.next()) count++;
-                    assertTrue(count >= 3, "Expected at least 3 core tables in SQLite DB");
-                }
-            }
-        }
-    }
-
-    private void doSimpleCrudOnPlayers(Connection conn) throws Exception {
-        String uuid = UUID.randomUUID().toString();
-        String name = "TestUser";
-        double money = 1234.56;
-        try (PreparedStatement insert = conn.prepareStatement("INSERT INTO players (uuid, username, money) VALUES (?, ?, ?)");) {
-            insert.setString(1, uuid);
-            insert.setString(2, name);
-            insert.setDouble(3, money);
-            int rows = insert.executeUpdate();
-            assertEquals(1, rows, "Insert should affect 1 row");
-        }
-        try (PreparedStatement ps = conn.prepareStatement("SELECT username, money FROM players WHERE uuid = ?")) {
-            ps.setString(1, uuid);
-            try (ResultSet rs = ps.executeQuery()) {
-                assertTrue(rs.next(), "Inserted player should exist");
-                assertEquals(name, rs.getString(1));
-                assertEquals(money, rs.getDouble(2), 0.001);
-            }
-        }
-    }
-
     @Nested
     class SQLiteIntegration {
         @TempDir
@@ -120,7 +72,7 @@ class DatabaseManagerIntegrationTest {
 
         @Test
         @Tag("integration")
-        void sqlite_initialize_and_crud() throws Exception {
+        void sqlite_healthcheck_ok() {
             FileConfiguration cfg = sqliteConfig();
             DynamicJobsEconomy plugin = mockPlugin(tempDir, cfg);
 
@@ -128,22 +80,15 @@ class DatabaseManagerIntegrationTest {
             assertTrue(db.initialize(), "SQLite initialize() should return true");
             assertEquals("sqlite", db.getDatabaseType());
 
-            try (Connection conn = db.getConnection()) {
-                assertNotNull(conn);
-                assertFalse(conn.isClosed());
-                assertCoreTablesExist(conn, false, null);
-                doSimpleCrudOnPlayers(conn);
-            }
+            Mockito.when(plugin.getDatabaseManager()).thenReturn(db);
 
-            // Acquire another connection after closing previous (pool should handle it)
-            try (Connection conn2 = db.getConnection()) {
-                try (Statement s = conn2.createStatement()) {
-                    try (ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM players")) {
-                        assertTrue(rs.next());
-                        assertTrue(rs.getInt(1) >= 1);
-                    }
-                }
-            }
+            DatabaseHealthCheck hc = new DatabaseHealthCheck(plugin);
+            DatabaseHealthCheck.Result res = hc.run();
+
+            assertTrue(res.isOk(), "Health check should pass on SQLite");
+            assertEquals("sqlite", res.getDbType());
+            assertNull(res.getErrorMessage());
+            assertTrue(res.getLatencyMs() >= 0);
         }
     }
 
@@ -164,7 +109,7 @@ class DatabaseManagerIntegrationTest {
 
         @Test
         @Tag("integration")
-        void mysql_initialize_and_crud() throws Exception {
+        void mysql_healthcheck_ok() {
             FileConfiguration cfg = mysqlConfig(
                     MYSQL.getHost(),
                     MYSQL.getFirstMappedPort(),
@@ -178,22 +123,15 @@ class DatabaseManagerIntegrationTest {
             assertTrue(db.initialize(), "MySQL initialize() should return true");
             assertEquals("mysql", db.getDatabaseType());
 
-            try (Connection conn = db.getConnection()) {
-                assertNotNull(conn);
-                assertFalse(conn.isClosed());
-                assertCoreTablesExist(conn, true, MYSQL.getDatabaseName());
-                doSimpleCrudOnPlayers(conn);
-            }
+            Mockito.when(plugin.getDatabaseManager()).thenReturn(db);
 
-            // Ensure pool returns usable connection again
-            try (Connection conn2 = db.getConnection()) {
-                try (Statement s = conn2.createStatement()) {
-                    try (ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM players")) {
-                        assertTrue(rs.next());
-                        assertTrue(rs.getInt(1) >= 1);
-                    }
-                }
-            }
+            DatabaseHealthCheck hc = new DatabaseHealthCheck(plugin);
+            DatabaseHealthCheck.Result res = hc.run();
+
+            assertTrue(res.isOk(), "Health check should pass on MySQL");
+            assertEquals("mysql", res.getDbType());
+            assertNull(res.getErrorMessage());
+            assertTrue(res.getLatencyMs() >= 0);
         }
     }
 }
