@@ -21,6 +21,7 @@
 
 ### 🐛 Bug Fixes
 - Fixed a critical bug in `ConsolidatedBusinessManager.getBusinessPerformanceReport(...)` where a missing return could lead to incorrect or empty results.
+- Fixed a lot of misbeaving Business GUI related issues.
 
 ### 🧪 Testing
 - Verified full compile via Maven and prepared test plan for GUI navigation and reload behavior (no duplicate revenue tasks).
