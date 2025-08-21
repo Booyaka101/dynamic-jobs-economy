@@ -16,6 +16,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Allows profiles to skip the default shade execution -->
+        <shade.skip>false</shade.skip>
     </properties>
 
     <build>
@@ -44,11 +46,13 @@
                 <version>3.5.1</version>
                 <executions>
                     <execution>
+                        <id>default-shade</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <skip>${shade.skip}</skip>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -302,6 +306,10 @@
         </profile>
         <profile>
             <id>spigot-ultra</id>
+            <properties>
+                <!-- Skip default shade to use profile-optimized shading below -->
+                <shade.skip>true</shade.skip>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -349,6 +357,10 @@
         </profile>
         <profile>
             <id>spigot-lite</id>
+            <properties>
+                <!-- Skip default shade to use profile-optimized shading below -->
+                <shade.skip>true</shade.skip>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
