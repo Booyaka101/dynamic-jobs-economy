@@ -14,6 +14,22 @@
 ### 📚 Docs
 - 
 
+## Version 1.0.4.1 - "GUI Tooltip Hotfix" (August 2025)
+
+### 🐛 Bug Fixes
+- Fixed persistent blank tooltip when hovering over empty GUI slots by introducing a config toggle to disable filler panes.
+- Hardened GUI protections to prevent moving items on Business GUI screens by cancelling both click and drag interactions while a `BusinessGUI` is open.
+- Fixed broken/inconsistent UI screens by ensuring all Business GUI inventories use `BusinessGUIHolder` and validating top-inventory checks.
+
+### 🔧 Config
+- New key in `config.yml`:
+  - `gui.useFillerPanes` (default: `true`) — when `false`, empty GUI slots are left empty to avoid hover tooltips.
+
+### Notes
+- Behavior for click/drag blocking in GUI is unchanged; interactions remain canceled while a `BusinessGUI` inventory is open.
+
+---
+
 ## Version 1.0.4 - "Admin Economy Fixes & i18n" (August 2025)
 
 ### ✨ Improvements

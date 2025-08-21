@@ -2,6 +2,8 @@ package com.boopugstudios.dynamicjobseconomy.commands;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
 import com.boopugstudios.dynamicjobseconomy.util.JobNameUtil;
+import com.boopugstudios.dynamicjobseconomy.business.Business;
+import com.boopugstudios.dynamicjobseconomy.business.ConsolidatedBusinessManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -198,6 +200,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 }
                 String limit = args.length >= 3 ? args[2] : null;
                 handleHistory(sender, args[1], limit, prefix);
+                break;
+            case "businessinfo":
+                handleBusinessInfo(sender, args, prefix);
                 break;
                 
             default:
@@ -479,6 +484,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("admin.help.history", null, "§f/djeconomy history <player> [limit] §7- View recent admin economy actions"));
         sender.sendMessage(msg("admin.help.refreshjobs", null, "§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)"));
         sender.sendMessage(msg("admin.help.invalidatejobs", null, "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"));
+        sender.sendMessage(msg("admin.help.businessinfo", null, "§f/djeconomy businessinfo [businessName] §7- View global or per-business stats"));
     }
 
     /**
@@ -531,7 +537,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> base = Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs");
+            List<String> base = Arrays.asList("reload", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
             String pref = args[0].toLowerCase();
             return base.stream()
                 .filter(s -> s.toLowerCase().startsWith(pref))
@@ -543,6 +549,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             if (args[0].equalsIgnoreCase("economy")) {
                 return Arrays.asList("give", "take", "set").stream()
                     .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            if (args[0].equalsIgnoreCase("businessinfo")) {
+                ConsolidatedBusinessManager mgr = plugin.getConsolidatedBusinessManager();
+                if (mgr == null) return new ArrayList<>();
+                return mgr.getAllBusinesses().stream()
+                    .map(Business::getName)
+                    .filter(n -> n != null && n.toLowerCase().startsWith(args[1].toLowerCase()))
                     .collect(Collectors.toList());
             }
             if (args[0].equalsIgnoreCase("refreshjobs") || args[0].equalsIgnoreCase("invalidatejobs")
@@ -645,9 +659,59 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 return "djeconomy.admin.jobs.invalidate";
             case "history":
                 return "djeconomy.admin.history.view";
+            case "businessinfo":
+                return "djeconomy.admin.businessinfo";
             default:
                 return null;
         }
+    }
+
+    private void handleBusinessInfo(CommandSender sender, String[] args, String prefix) {
+        ConsolidatedBusinessManager mgr = plugin.getConsolidatedBusinessManager();
+        if (mgr == null) {
+            sender.sendMessage(prefix + msg("admin.businessinfo.unavailable", null, "§cBusiness system is unavailable."));
+            return;
+        }
+
+        if (args.length == 1) {
+            int totalBusinesses = mgr.getTotalBusinessesCount();
+            int totalPositions = mgr.getTotalActivePositionsCount();
+            int totalEmployees = mgr.getTotalActiveEmployeesCount();
+            int totalPending = mgr.getTotalPendingHiringRequestsCount();
+
+            sender.sendMessage(msg("admin.businessinfo.header.global", null, "§6Business Statistics (Global)"));
+            Map<String, String> ph = new HashMap<>();
+            ph.put("businesses", String.valueOf(totalBusinesses));
+            ph.put("positions", String.valueOf(totalPositions));
+            ph.put("employees", String.valueOf(totalEmployees));
+            ph.put("pending", String.valueOf(totalPending));
+            sender.sendMessage(msg("admin.businessinfo.global", ph,
+                "§7Total Businesses: §f%businesses%§7, Active Positions: §f%positions%§7, Employees: §f%employees%§7, Pending Requests: §f%pending%"));
+            return;
+        }
+
+        String businessName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        Business b = mgr.getBusinessByName(businessName);
+        if (b == null) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", businessName);
+            sender.sendMessage(prefix + msg("admin.businessinfo.not_found", ph, "§cBusiness '%name%' not found."));
+            return;
+        }
+
+        int activePositions = mgr.getActivePositionsCount(b.getId());
+        int activeEmployees = mgr.getEmployeesCount(b.getId());
+        int pending = mgr.getPendingHiringRequestsCountForBusiness(b.getId());
+
+        Map<String, String> ph = new HashMap<>();
+        ph.put("name", b.getName());
+        ph.put("id", String.valueOf(b.getId()));
+        ph.put("positions", String.valueOf(activePositions));
+        ph.put("employees", String.valueOf(activeEmployees));
+        ph.put("pending", String.valueOf(pending));
+        sender.sendMessage(msg("admin.businessinfo.header.business", ph, "§6Business: §e%name% §7(ID: %id%)"));
+        sender.sendMessage(msg("admin.businessinfo.business", ph,
+            "§7Active Positions: §f%positions%§7, Employees: §f%employees%§7, Pending Requests: §f%pending%"));
     }
 
     private void handleRefreshJobs(CommandSender sender, String playerName, String prefix) {

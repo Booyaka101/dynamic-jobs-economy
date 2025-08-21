@@ -1,9 +1,5 @@
 package com.boopugstudios.dynamicjobseconomy.integrations;
 
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
 // LuckPerms integration using reflection to avoid compile-time dependency
 import org.bukkit.entity.Player;
@@ -68,28 +64,74 @@ public class IntegrationManager {
         }
         
         try {
-            RegionManager regions = WorldGuard.getInstance().getPlatform()
-                .getRegionContainer().get(BukkitAdapter.adapt(player.getWorld()));
-            
-            if (regions == null) {
+            // Reflectively access WorldGuard API to avoid hard dependency
+            Class<?> worldGuardCls = Class.forName("com.sk89q.worldguard.WorldGuard");
+            Object wg = worldGuardCls.getMethod("getInstance").invoke(null);
+            Object platform = worldGuardCls.getMethod("getPlatform").invoke(wg);
+            Object regionContainer = platform.getClass().getMethod("getRegionContainer").invoke(platform);
+
+            // Adapt Bukkit world and location via BukkitAdapter
+            Class<?> bukkitAdapterCls = Class.forName("com.sk89q.worldedit.bukkit.BukkitAdapter");
+            Class<?> weWorldCls = Class.forName("com.sk89q.worldedit.world.World");
+            Object adaptedWorld = bukkitAdapterCls.getMethod("adapt", org.bukkit.World.class)
+                .invoke(null, player.getWorld());
+
+            // regionContainer.get(World)
+            Object regionManager = regionContainer.getClass().getMethod("get", weWorldCls)
+                .invoke(regionContainer, adaptedWorld);
+            if (regionManager == null) {
                 return false;
             }
-            
-            Set<ProtectedRegion> applicableRegions = regions.getApplicableRegions(
-                BukkitAdapter.asBlockVector(player.getLocation())).getRegions();
-            
-            // Check if any region blocks job XP
-            for (ProtectedRegion region : applicableRegions) {
-                if (region.getFlag(com.sk89q.worldguard.protection.flags.Flags.DENY_SPAWN) != null ||
-                    region.getId().toLowerCase().contains("nojobs") ||
-                    region.getId().toLowerCase().contains("spawn")) {
-                    return true; // Block job XP in these regions
+
+            // Build BlockVector3 from player location
+            Class<?> blockVector3Cls = Class.forName("com.sk89q.worldedit.math.BlockVector3");
+            Object blockVec = bukkitAdapterCls.getMethod("asBlockVector", org.bukkit.Location.class)
+                .invoke(null, player.getLocation());
+
+            // regions.getApplicableRegions(BlockVector3)
+            Object applicableRegionSet = regionManager.getClass()
+                .getMethod("getApplicableRegions", blockVector3Cls)
+                .invoke(regionManager, blockVec);
+
+            // applicableRegionSet.getRegions() -> Set<ProtectedRegion>
+            Set<?> regions = (Set<?>) applicableRegionSet.getClass().getMethod("getRegions").invoke(applicableRegionSet);
+
+            // Optional flag check via reflection
+            Class<?> protectedRegionCls = Class.forName("com.sk89q.worldguard.protection.regions.ProtectedRegion");
+            Class<?> flagCls = Class.forName("com.sk89q.worldguard.protection.flags.Flag");
+            Class<?> flagsCls = Class.forName("com.sk89q.worldguard.protection.flags.Flags");
+            Object denySpawnFlag = null;
+            try {
+                denySpawnFlag = flagsCls.getField("DENY_SPAWN").get(null);
+            } catch (NoSuchFieldException nsfe) {
+                // Older/newer WG may not have this exact field; ignore
+            }
+
+            for (Object region : regions) {
+                // Check id patterns regardless of flag availability
+                String id = (String) protectedRegionCls.getMethod("getId").invoke(region);
+                if (id != null) {
+                    String lid = id.toLowerCase();
+                    if (lid.contains("nojobs") || lid.contains("spawn")) {
+                        return true; // Block job XP in these regions
+                    }
+                }
+
+                if (denySpawnFlag != null) {
+                    Object flagValue = protectedRegionCls.getMethod("getFlag", flagCls).invoke(region, denySpawnFlag);
+                    if (flagValue != null) {
+                        return true;
+                    }
                 }
             }
-            
+
+            return false;
+        } catch (ClassNotFoundException e) {
+            // WorldGuard (or WorldEdit) classes not present at runtime
+            plugin.getLogger().fine("WorldGuard classes not found; skipping region checks.");
             return false;
         } catch (Exception e) {
-            plugin.getLogger().warning("Error checking WorldGuard regions: " + e.getMessage());
+            plugin.getLogger().warning("Error checking WorldGuard regions reflectively: " + e.getMessage());
             return false;
         }
     }

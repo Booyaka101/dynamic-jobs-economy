@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -26,11 +27,15 @@ public class BusinessGUI implements Listener {
     private final ConsolidatedBusinessManager businessManager;
     private final Map<UUID, GUISession> activeSessions;
     private final DynamicJobsEconomy plugin;
+    private final boolean debugClicks;
+    private final boolean useFillerPanes;
     
     public BusinessGUI(DynamicJobsEconomy plugin, ConsolidatedBusinessManager businessManager) {
         this.plugin = plugin;
         this.businessManager = businessManager;
         this.activeSessions = new HashMap<>();
+        this.debugClicks = plugin.getConfig().getBoolean("debug.guiClicks", false);
+        this.useFillerPanes = plugin.getConfig().getBoolean("gui.useFillerPanes", true);
         
         // Register event listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -263,6 +268,9 @@ public class BusinessGUI implements Listener {
      * Fill empty inventory slots with glass panes
      */
     private void fillEmptySlots(Inventory inventory, Material material) {
+        if (!useFillerPanes) {
+            return;
+        }
         ItemStack filler = new ItemStack(material);
         ItemMeta meta = filler.getItemMeta();
         if (meta != null) {
@@ -288,16 +296,51 @@ public class BusinessGUI implements Listener {
         UUID playerUUID = player.getUniqueId();
         
         if (!activeSessions.containsKey(playerUUID)) return;
-        if (!(event.getInventory().getHolder() instanceof BusinessGUIHolder)) return;
+        org.bukkit.inventory.Inventory top = event.getView().getTopInventory();
+        if (top == null || !(top.getHolder() instanceof BusinessGUIHolder)) return;
         
         event.setCancelled(true); // Prevent item movement
+        if (event.getClickedInventory() == null) return; // Clicked outside
         
         GUISession session = activeSessions.get(playerUUID);
         ItemStack clickedItem = event.getCurrentItem();
         
+        if (debugClicks) {
+            String name = (clickedItem != null && clickedItem.getItemMeta() != null) ? ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName()) : "";
+            String whichInv = event.getClickedInventory() == event.getView().getTopInventory() ? "TOP" : "BOTTOM";
+            plugin.getLogger().info(String.format("[GUI-DEBUG] Click by %s gui=%s slot=%d rawSlot=%d inv=%s type=%s name='%s' action=%s", 
+                    player.getName(),
+                    session.getCurrentGUI(),
+                    event.getSlot(),
+                    event.getRawSlot(),
+                    whichInv,
+                    (clickedItem == null ? "null" : clickedItem.getType().name()),
+                    name,
+                    event.getAction()));
+        }
+
         if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
         
         handleGUIClick(player, session, clickedItem, event.getSlot());
+    }
+
+    /**
+     * Prevent dragging items in GUI inventories
+     */
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        org.bukkit.inventory.Inventory top = event.getView().getTopInventory();
+        if (top != null && top.getHolder() instanceof BusinessGUIHolder) {
+            if (debugClicks) {
+                Player p = (Player) event.getWhoClicked();
+                plugin.getLogger().info(String.format("[GUI-DEBUG] Drag by %s slots=%s type=%s", 
+                        p.getName(),
+                        event.getRawSlots().toString(),
+                        event.getType()));
+            }
+            event.setCancelled(true);
+        }
     }
     
     /**
@@ -318,19 +361,19 @@ public class BusinessGUI implements Listener {
                 handleBusinessDetailsClick(player, session, itemName);
                 break;
             case EMPLOYEE_MANAGEMENT:
-                handleEmployeeManagementClick(player, session, itemName);
+                handleEmployeeManagementClick(player, session, itemName, slot);
                 break;
             case REVENUE_OVERVIEW:
-                handleRevenueOverviewClick(player, session, itemName);
+                handleRevenueOverviewClick(player, session, itemName, slot);
                 break;
             case LOCATIONS_MENU:
-                handleLocationsMenuClick(player, session, itemName);
+                handleLocationsMenuClick(player, session, itemName, slot);
                 break;
             case PROCESSING_CHAINS:
-                handleProcessingChainsClick(player, session, itemName);
+                handleProcessingChainsClick(player, session, itemName, slot);
                 break;
             case CONSTRUCTION_CONTRACTS:
-                handleConstructionContractsClick(player, session, itemName);
+                handleConstructionContractsClick(player, session, itemName, slot);
                 break;
             case CREATE_BUSINESS:
                 handleCreateBusinessClick(player, session, itemName);
@@ -431,11 +474,17 @@ public class BusinessGUI implements Listener {
      * Custom inventory holder for business GUIs
      */
     private static class BusinessGUIHolder implements InventoryHolder {
-        
+        private final GUIType type;
+
         public BusinessGUIHolder(GUIType guiType) {
-            // Constructor for type identification (parameter retained for API compatibility)
+            this.type = guiType;
         }
-        
+
+        @SuppressWarnings("unused")
+        public GUIType getType() {
+            return type;
+        }
+
         @Override
         public Inventory getInventory() {
             return null; // Not used
@@ -454,7 +503,7 @@ public class BusinessGUI implements Listener {
     /**
      * Handle employee management GUI clicks
      */
-    private void handleEmployeeManagementClick(Player player, GUISession session, String itemName) {
+    private void handleEmployeeManagementClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
             return;
@@ -480,7 +529,7 @@ public class BusinessGUI implements Listener {
     /**
      * Handle revenue overview GUI clicks
      */
-    private void handleRevenueOverviewClick(Player player, GUISession session, String itemName) {
+    private void handleRevenueOverviewClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
         } else if ("Back to Business Menu".equals(itemName)) {
@@ -496,7 +545,7 @@ public class BusinessGUI implements Listener {
     /**
      * Handle locations menu GUI clicks
      */
-    private void handleLocationsMenuClick(Player player, GUISession session, String itemName) {
+    private void handleLocationsMenuClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
         } else if ("Back to Business Menu".equals(itemName)) {
@@ -512,7 +561,7 @@ public class BusinessGUI implements Listener {
     /**
      * Handle processing chains GUI clicks
      */
-    private void handleProcessingChainsClick(Player player, GUISession session, String itemName) {
+    private void handleProcessingChainsClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
         } else if ("Back to Business Menu".equals(itemName)) {
@@ -528,7 +577,7 @@ public class BusinessGUI implements Listener {
     /**
      * Handle construction contracts GUI clicks
      */
-    private void handleConstructionContractsClick(Player player, GUISession session, String itemName) {
+    private void handleConstructionContractsClick(Player player, GUISession session, String itemName, int slot) {
         if ("Back to Main Menu".equals(itemName)) {
             openMainMenu(player);
         } else if ("Back to Business Menu".equals(itemName)) {
@@ -558,7 +607,7 @@ public class BusinessGUI implements Listener {
      * Open revenue overview menu
      */
     private void openRevenueOverview(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§6Revenue Overview");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.REVENUE_OVERVIEW), 45, "§6Revenue Overview");
         
         List<Business> playerBusinesses = businessManager.getPlayerBusinesses(player);
         
@@ -614,7 +663,7 @@ public class BusinessGUI implements Listener {
      * Open business locations menu
      */
     private void openLocationsMenu(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§9Business Locations");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.LOCATIONS_MENU), 45, "§9Business Locations");
         
         List<Business> playerBusinesses = businessManager.getPlayerBusinesses(player);
         
@@ -668,7 +717,7 @@ public class BusinessGUI implements Listener {
      * Open processing chains menu
      */
     private void openProcessingChains(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§aResource Processing");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.PROCESSING_CHAINS), 45, "§aResource Processing");
         
         List<Business> playerBusinesses = businessManager.getPlayerBusinesses(player);
         
@@ -723,7 +772,7 @@ public class BusinessGUI implements Listener {
      * Open construction contracts menu
      */
     private void openConstructionContracts(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§cConstruction Contracts");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.CONSTRUCTION_CONTRACTS), 45, "§cConstruction Contracts");
         
         List<Business> playerBusinesses = businessManager.getPlayerBusinesses(player);
         
@@ -779,7 +828,7 @@ public class BusinessGUI implements Listener {
      * Open employee management menu
      */
     private void openEmployeeManagement(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§dEmployee Management");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.EMPLOYEE_MANAGEMENT), 45, "§dEmployee Management");
         
         List<Business> playerBusinesses = businessManager.getPlayerBusinesses(player);
         
@@ -835,7 +884,7 @@ public class BusinessGUI implements Listener {
      * Open create business menu
      */
     private void openCreateBusiness(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§eCreate New Business");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.CREATE_BUSINESS), 45, "§eCreate New Business");
         
         // Business type options
         String[] businessTypes = {"restaurant", "shop", "factory", "farm", "construction", "mining", "technology", "transportation"};
@@ -888,7 +937,7 @@ public class BusinessGUI implements Listener {
      * Open employee management GUI for a specific business
      */
     private void openEmployeeManagementGUI(Player player, Business business) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§9" + business.getName() + " - Employees");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.EMPLOYEE_MANAGEMENT), 45, "§9" + business.getName() + " - Employees");
         
         List<BusinessEmployee> employees = business.getBusinessEmployees();
         
@@ -939,7 +988,7 @@ public class BusinessGUI implements Listener {
      * Open revenue overview GUI for a specific business
      */
     private void openRevenueOverviewGUI(Player player, Business business) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§6" + business.getName() + " - Revenue");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.REVENUE_OVERVIEW), 45, "§6" + business.getName() + " - Revenue");
         
         // Get revenue data
         double dailyRevenue = business.getDailyRevenue();
@@ -994,7 +1043,7 @@ public class BusinessGUI implements Listener {
      * Open location management GUI for a specific business
      */
     private void openLocationManagementGUI(Player player, Business business) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§9" + business.getName() + " - Locations");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.LOCATIONS_MENU), 45, "§9" + business.getName() + " - Locations");
         
         List<BusinessLocation> locations = business.getLocations();
         
@@ -1045,7 +1094,7 @@ public class BusinessGUI implements Listener {
      * Open processing chain GUI for a specific business
      */
     private void openProcessingChainGUI(Player player, Business business) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§a" + business.getName() + " - Processing");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.PROCESSING_CHAINS), 45, "§a" + business.getName() + " - Processing");
         
         List<ResourceProcessingChain> chains = business.getProcessingChains();
         
@@ -1098,7 +1147,7 @@ public class BusinessGUI implements Listener {
      * Open employee details GUI for a specific employee
      */
     private void openEmployeeDetailsGUI(Player player, Business business, String employeeName) {
-        Inventory inventory = Bukkit.createInventory(null, 27, "§6Employee: " + employeeName);
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.EMPLOYEE_MANAGEMENT), 27, "§6Employee: " + employeeName);
         
         BusinessEmployee employee = business.getBusinessEmployees().stream()
             .filter(e -> e.getPlayerName().equals(employeeName))
@@ -1142,7 +1191,7 @@ public class BusinessGUI implements Listener {
      * Open position management GUI for a specific business
      */
     private void openPositionManagementGUI(Player player, Business business) {
-        Inventory inventory = Bukkit.createInventory(null, 45, "§e" + business.getName() + " - Positions");
+        Inventory inventory = Bukkit.createInventory(new BusinessGUIHolder(GUIType.EMPLOYEE_MANAGEMENT), 45, "§e" + business.getName() + " - Positions");
         
         List<BusinessPosition> positions = business.getPositions();
         

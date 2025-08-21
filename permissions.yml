@@ -219,6 +219,7 @@ permissions:
       - djeconomy.admin.jobs.refresh
       - djeconomy.admin.jobs.invalidate
       - djeconomy.admin.history.view
+      - djeconomy.admin.businessinfo
 
   djeconomy.admin.revenue.manual:
     description: "Manually generate revenue for any business"
@@ -263,6 +264,9 @@ permissions:
     default: false
   djeconomy.admin.history.view:
     description: "View recent admin economy actions for a player"
+    default: false
+  djeconomy.admin.businessinfo:
+    description: "View global and per-business statistics via /djeconomy businessinfo"
     default: false
 
   djeconomy.system.reload:

@@ -220,3 +220,7 @@ debug:
   enabled: false
   log_database_queries: false
   log_xp_gains: false
+  
+gui:
+  # Fill empty GUI slots with neutral panes to frame menus. Set to false to avoid hover tooltips on empty slots.
+  useFillerPanes: true

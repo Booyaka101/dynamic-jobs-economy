@@ -710,9 +710,132 @@ public class ConsolidatedBusinessManager {
                 }
             }
         } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Error getting pending requests", e);
+            plugin.getLogger().log(Level.SEVERE, "Error getting pending hiring requests", e);
         }
         return requests;
+    }
+
+    /**
+     * Expose all businesses (read-only copy) for suggestions and overview
+     */
+    public Collection<Business> getAllBusinesses() {
+        return new ArrayList<>(businessCache.values());
+    }
+    
+    // ==================== AGGREGATE STATS HELPERS ====================
+    
+    /** Total count of all businesses */
+    public int getTotalBusinessesCount() {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM businesses";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : businessCache.size();
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Error counting businesses; falling back to cache size", e);
+            return businessCache.size();
+        }
+    }
+    
+    /** Total count of active positions across all businesses */
+    public int getTotalActivePositionsCount() {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM business_positions WHERE is_active = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setBoolean(1, true);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting active positions", e);
+            return 0;
+        }
+    }
+    
+    /** Total count of active employees across all businesses */
+    public int getTotalActiveEmployeesCount() {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM business_employees WHERE is_active = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setBoolean(1, true);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting active employees", e);
+            return 0;
+        }
+    }
+    
+    /** Total count of pending, non-expired hiring requests across all businesses */
+    public int getTotalPendingHiringRequestsCount() {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM hiring_requests WHERE status = 'PENDING' AND expiration_time > ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setLong(1, System.currentTimeMillis());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting pending hiring requests", e);
+            return 0;
+        }
+    }
+    
+    /** Count of active positions for a specific business */
+    public int getActivePositionsCount(int businessId) {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM business_positions WHERE business_id = ? AND is_active = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, businessId);
+                stmt.setBoolean(2, true);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting business active positions", e);
+            return 0;
+        }
+    }
+    
+    /** Count of active employees for a specific business */
+    public int getEmployeesCount(int businessId) {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM business_employees WHERE business_id = ? AND is_active = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, businessId);
+                stmt.setBoolean(2, true);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting business employees", e);
+            return 0;
+        }
+    }
+    
+    /** Count of pending, non-expired hiring requests for a specific business */
+    public int getPendingHiringRequestsCountForBusiness(int businessId) {
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            String sql = "SELECT COUNT(*) FROM hiring_requests WHERE business_id = ? AND status = 'PENDING' AND expiration_time > ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, businessId);
+                stmt.setLong(2, System.currentTimeMillis());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error counting business pending requests", e);
+            return 0;
+        }
     }
     
     // ==================== UTILITY METHODS ====================
