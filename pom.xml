@@ -37,7 +37,7 @@
                 <version>3.2.5</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
-                    <excludeTags>integration</excludeTags>
+                    <excludedGroups>integration</excludedGroups>
                     <!-- Prevent indefinitely hung test JVMs -->
                     <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
                     <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
@@ -198,7 +198,7 @@
                         <version>3.2.5</version>
                         <configuration combine.self="override">
                             <useModulePath>false</useModulePath>
-                            <includeTags>integration</includeTags>
+                            <groups>integration</groups>
                             <!-- Prevent indefinitely hung test JVMs in ITs (e.g., Testcontainers issues) -->
                             <forkedProcessTimeoutInSeconds>2400</forkedProcessTimeoutInSeconds>
                             <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
