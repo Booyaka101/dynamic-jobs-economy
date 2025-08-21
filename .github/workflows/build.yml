@@ -75,11 +75,23 @@ jobs:
             exit 1
           fi
 
+      - name: Generate SHA-256 checksum
+        id: checksum
+        shell: bash
+        run: |
+          JAR="${{ steps.size.outputs.jar_path }}"
+          CHECKSUM=$(sha256sum "$JAR" | awk '{print $1}')
+          echo "$CHECKSUM  $(basename "$JAR")" | tee "${JAR}.sha256"
+          echo "sha256=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "checksum_path=${JAR}.sha256" >> $GITHUB_OUTPUT
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: DynamicJobsEconomy-jar-${{ matrix.profile }}
-          path: ${{ steps.size.outputs.jar_path }}
+          path: |
+            ${{ steps.size.outputs.jar_path }}
+            ${{ steps.checksum.outputs.checksum_path }}
           if-no-files-found: error
 
   integration-tests:

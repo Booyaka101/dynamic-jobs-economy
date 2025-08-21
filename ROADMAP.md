@@ -16,16 +16,35 @@ Use this file during planning/release sessions. Check items off as we implement 
   - Validate config keys, DB connectivity, Vault presence, permissions sanity
   - Output clear pass/warn/fail with suggestions
   - Touchpoints: `src/main/resources/config.yml`, `plugin.yml` (new command), DB service, integrations
-- [ ] CI build matrix + artifacts + JAR size guard (id: plan_ci_matrix)
+  - Implementation checklist (IDs):
+    - [x] Add command + usage to `plugin.yml` (id: plan_doctor_cmd)
+    - `DoctorCommandExecutor` skeleton and routing (id: plan_doctor_exec)
+    - `ConfigValidator` for required keys (id: plan_doctor_config)
+    - `VaultHealthCheck` (plugin + provider) (id: plan_doctor_vault)
+    - `DatabaseHealthCheck` for sqlite/mysql/mongodb (id: plan_doctor_db)
+    - Console vs player output formatting + suggestions (id: plan_doctor_output)
+    - Unit tests for validators (id: plan_doctor_tests_unit)
+    - Integration tests using Testcontainers MySQL (id: plan_doctor_tests_it)
+- [x] CI build matrix + artifacts + JAR size guard (id: plan_ci_matrix) — completed in `.github/workflows/build.yml`
   - Build profiles: default, `spigot-lite`, `spigot-ultra`, `spigot-ultra-mysql`, `spigot-linux-sqlite`
-  - Upload artifacts, enforce max-size thresholds, publish checksums
+  - Upload artifacts and enforce max-size thresholds
+  - TODO: publish checksums alongside artifacts
   - Touchpoints: `.github/workflows/build.yml`, `pom.xml`
 - [ ] Performance pass (async + caching + batching) (id: plan_perf)
   - Async DB operations, cache hot player/job data, batch writes, safe flush on shutdown
   - Add lightweight timings/diagnostics with debug toggle
+  - Acceptance criteria:
+    - P95 main-thread impact of admin economy ops ≤ 2ms under light load
+    - Zero synchronous DB calls on main paths (verified via logs/timings)
+    - Cache hit rate ≥ 80% for hot player/job lookups in a 5-minute window
+    - Clean shutdown: caches flushed without errors in logs
 - [ ] Admin Economy GUI with confirm flows (id: plan_guis)
   - Give/Take/Set with confirmation, reason logging, history viewer
   - Touchpoints: command handlers, GUI classes, `messages.yml`
+  - Acceptance criteria:
+    - Gated by `djeconomy.gui.admin` and granular perms under `djeconomy.gui.admin.economy.*`
+    - Confirmation threshold/expiry honored from config; denial/approval logged to history
+    - All new strings externalized to `messages.yml` with i18n keys
 
 ### ✅ 1.0.6 Acceptance Criteria
 - plan_doctor
@@ -78,8 +97,9 @@ Use this file during planning/release sessions. Check items off as we implement 
 
 ## ⚡ Quick wins (can ship anytime)
 - [ ] Doctor command skeleton + basic checks (subset of plan_doctor)
-- [ ] CI artifacts + JAR size checks (subset of plan_ci_matrix)
-- [ ] i18n sweep of new admin messages (subset of plan_i18n)
+- [x] CI artifacts + JAR size checks (subset of plan_ci_matrix)
+- [ ] Publish artifact checksums (sha256) in CI
+  - [ ] i18n sweep of new admin messages (subset of plan_i18n)
 
 ---
 
@@ -94,4 +114,4 @@ Use this file during planning/release sessions. Check items off as we implement 
 ---
 
 ## 🗂️ Done (link PRs/commits)
-- [ ] (add items here when complete)
+- [x] plan_ci_matrix — build matrix, artifact upload, and size guard in `.github/workflows/build.yml`

@@ -605,6 +605,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 String p = plugin.getMessages().getPrefix();
                 if (p != null && !p.isEmpty()) return p;
             }
+            if (plugin.getConfig() != null) {
+                // Provide non-null default so Mockito anyString() stubs match in tests
+                String fromCfg = plugin.getConfig().getString("messages.prefix", "");
+                if (fromCfg != null && !fromCfg.isEmpty()) return fromCfg;
+            }
         } catch (Throwable ignored) {}
         return "§8[§6DynamicJobs§8] ";
     }
