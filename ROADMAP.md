@@ -32,6 +32,15 @@ Use this file during planning/release sessions. Check items off as we implement 
   - Upload artifacts and enforce max-size thresholds
   - Tracked in `plan_ci_checksums`
   - Touchpoints: `.github/workflows/build.yml`, `pom.xml`
+- [x] Admin economy confirmation + chat reason capture for command flows (id: plan_admin_confirm_cli)
+  - Components: `AdminCommand`, `AdminReasonChatListener`, `AdminConfirmationManager`
+  - Details: large transactions prompt confirmation; admins can type reason in chat; reason stored and applied on `/djeconomy confirm`; pending expiry purge scheduled
+  - History: includes reason when present; direct executions store null reason
+  - Status: Implemented and wired; docs pending
+- [x] Permissions alignment for new/updated nodes (id: plan_perms_alignment)
+  - `djeconomy.system.doctor` added and included under `djeconomy.admin` and `djeconomy.system.*`
+  - `djeconomy.admin.businessinfo` explicitly defined and nested under `djeconomy.admin`
+  - GUI granular perms under `djeconomy.gui.admin.economy.*` reflected in docs/spec
 - [ ] Performance pass (async + caching + batching) (id: plan_perf)
   - Async DB operations, cache hot player/job data, batch writes, safe flush on shutdown
   - Add lightweight timings/diagnostics with debug toggle
@@ -109,9 +118,13 @@ Use this file during planning/release sessions. Check items off as we implement 
  - plan_doctor_i18n: done — doctor strings in `messages.yml` including permissions tips
  - plan_doctor_perms: done — `djeconomy.system.doctor` permission declared and used; `PermissionsHealthCheck` integrated
  - plan_doctor_tests_unit: done — unit tests for validators (`ConfigValidatorTest`, `PermissionsHealthCheckTest`)
+ - plan_admin_confirm_cli: done — `AdminCommand` confirmation gating and history; `AdminReasonChatListener` captures reasons via chat; expiry purge scheduled in `DynamicJobsEconomy.onEnable()`
+ - plan_perms_alignment: done — `plugin.yml` updated with `djeconomy.admin.businessinfo` and `djeconomy.system.doctor`; docs synchronized
+ - plan_history_tab: done — `/djeconomy history` tab completion suggests [page] and [size]
 
 ### 🧾 1.0.6 Release Checklist
 - [ ] Update docs: `CHANGELOG.md`, `README.md`, `INSTALLATION.md`, `QUICK_START.md`, `USER_MANUAL.md`, Spigot templates
+  - Include admin confirmation flow with chat reason capture and updated permissions (`djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, GUI granular perms)
 - [ ] Build artifacts for profiles: default, `spigot-lite`, `spigot-ultra`, `spigot-ultra-mysql`, `spigot-linux-sqlite`
 - [ ] Generate and upload checksums (.sha256) for each artifact (`plan_ci_checksums`)
 - [ ] Sanity test DBs: SQLite and MySQL on 1.20.4–1.21.x
@@ -175,6 +188,7 @@ Use this file during planning/release sessions. Check items off as we implement 
 - [x] Test profiles and Docker gating for ITs; documented usage (id: quick_tests)
  - [ ] Publish artifact checksums (sha256) in CI (subset of plan_ci_checksums)
  - [ ] i18n sweep of new admin messages (subset of plan_i18n)
+ - [x] History tab completion for page/size suggestions for `/djeconomy history` (id: plan_history_tab)
 
 ---
 
@@ -191,3 +205,6 @@ Use this file during planning/release sessions. Check items off as we implement 
 
 ## 🗂️ Done (link PRs/commits)
 - [x] plan_ci_matrix — build matrix, artifact upload, and size guard in `.github/workflows/build.yml`
+ - [x] plan_admin_confirm_cli — command flow confirmation and chat reason capture wired (`AdminCommand`, `AdminReasonChatListener`)
+ - [x] plan_perms_alignment — updated `plugin.yml` for `djeconomy.system.doctor` and `djeconomy.admin.businessinfo`; permission docs aligned
+ - [x] plan_history_tab — improved tab completion for `/djeconomy history`

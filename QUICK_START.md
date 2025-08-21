@@ -52,7 +52,8 @@ When you start your server, you'll see:
 
 - Permissions:
   - Admin: `djeconomy.admin`
-  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
   - Player GUI: `djeconomy.gui.access`
 
 - Command safety (large amounts):
@@ -64,6 +65,7 @@ When you start your server, you'll see:
         expiry_seconds: 30
     ```
   - Use `/djeconomy confirm` to finalize large admin money actions.
+  - When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history upon confirmation.
 
 ### **For Players:**
 
@@ -151,10 +153,19 @@ Your plugin comes pre-configured with balanced settings:
 
 ### **Admin Commands:**
 ```
-/djeconomy reload                           # Reload config
-/djeconomy status                          # Plugin status
-/djeconomy setlevel <player> <job> <level> # Set player job level (online/offline)
-/djeconomy addxp <player> <job> <amount>   # Add XP to a player's job (online only)
+/djeconomy reload                             # Reload config
+/djeconomy status                              # Plugin status
+/djeconomy doctor                              # Run system diagnostics (permissions, DB, Vault)
+/djeconomy gui                                 # Open the Admin Economy GUI
+/djeconomy businessinfo [businessName]         # View global or per-business stats
+/djeconomy history <player> [page] [size]      # View admin economy history (with reasons)
+/djeconomy setlevel <player> <job> <level>     # Set player's job level (supports offline)
+/djeconomy getlevel <player> <job>             # Show player's job level (supports offline)
+/djeconomy resetlevel <player> <job>           # Reset player's job level to 1
+/djeconomy addxp <player> <job> <amount>       # Add XP to a player's job (online only)
+/djeconomy refreshjobs <player>                # Reload a player's job data (online only)
+/djeconomy invalidatejobs <player>             # Invalidate cached job data (online only)
+/djeconomy confirm                              # Confirm pending large action
 ```
 
 ## 🔧 **Customization Made Easy**

@@ -19,7 +19,7 @@ admin:
     invalidatejobs: "§cUsage: /djeconomy invalidatejobs <player>"
     getlevel: "§cUsage: /djeconomy getlevel <player> <job>"
     resetlevel: "§cUsage: /djeconomy resetlevel <player> <job>"
-    history: "§cUsage: /djeconomy history <player> [limit]"
+    history: "§cUsage: /djeconomy history <player> [page] [size]"
 
   player_not_found: "§cPlayer '%player%' not found or has never joined the server!"
   invalid_level: "§cInvalid level number!"
@@ -49,11 +49,16 @@ admin:
   no_pending_confirm: "§cNo pending action to confirm!"
   confirm_expired: "§cConfirmation expired! Please retry the command."
   confirm_cancelled: "§7Pending action cancelled."
+  reason:
+    prompt: "§ePlease type a reason in chat for this action (expires in %seconds%s)."
+    hint: "§7Example: 'Refund for bug', 'Anti-cheat action', or 'Manual adjustment'."
+    captured: "§aReason captured. Executing confirmation..."
+    expired: "§cReason capture expired. Please retry the command."
   gui:
     players_only: "§cOnly players can open the GUI!"
 
   history_none: "§7No history found for '%player%'."
-  history_header: "§eShowing last %count% entries for '%player%':"
+  history_header: "§eShowing last %count% entries for '%player%' §7(Page %page%/%pages%)"
 
   # Additional admin messages
   setlevel_success: "§aSet %player%'s %job% level to %level%%suffix%"
@@ -74,7 +79,7 @@ admin:
     resetlevel: "§f/djeconomy resetlevel <player> <job> §7- Reset player's job level to 1"
     addxp: "§f/djeconomy addxp <player> <job> <amount> §7- Add XP to player's job (online only)"
     economy: "§f/djeconomy economy <give|take|set> <player> <amount> §7- Manage player money"
-    history: "§f/djeconomy history <player> [limit] §7- View recent admin economy actions"
+    history: "§f/djeconomy history <player> [page] [size] §7- View admin economy history (with reasons)"
     refreshjobs: "§f/djeconomy refreshjobs <player> §7- Reload a player's job data from DB (online only)"
     invalidatejobs: "§f/djeconomy invalidatejobs <player> §7- Invalidate cached job data (online only)"
     doctor: "§f/djeconomy doctor §7- Run system diagnostics"

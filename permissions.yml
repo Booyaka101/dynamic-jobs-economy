@@ -146,6 +146,9 @@ permissions:
   djeconomy.contract.list:
     description: "List construction contracts"
     default: true
+  djeconomy.contract.view:
+    description: "View construction contracts"
+    default: true
   djeconomy.contract.accept:
     description: "Accept construction contracts"
     default: true
@@ -161,6 +164,21 @@ permissions:
     default: true
   djeconomy.gui.admin:
     description: "Access admin GUI features"
+    default: false
+  djeconomy.gui.admin.economy:
+    description: "Open the Admin Economy GUI"
+    default: false
+  djeconomy.gui.admin.economy.balance.view:
+    description: "View player balances in the Admin Economy GUI"
+    default: false
+  djeconomy.gui.admin.economy.balance.modify:
+    description: "Give/Take/Set balances in the Admin Economy GUI"
+    default: false
+  djeconomy.gui.admin.economy.history.view:
+    description: "View transaction history in the Admin Economy GUI"
+    default: false
+  djeconomy.gui.admin.economy.confirm.manage:
+    description: "Manage pending confirmations in the Admin Economy GUI"
     default: false
 
   # ==================== REVENUE AND ANALYTICS PERMISSIONS ====================
@@ -208,9 +226,15 @@ permissions:
       - djeconomy.admin.hire.force
       - djeconomy.admin.fire.force
       - djeconomy.gui.admin
+      - djeconomy.gui.admin.economy
+      - djeconomy.gui.admin.economy.balance.view
+      - djeconomy.gui.admin.economy.balance.modify
+      - djeconomy.gui.admin.economy.history.view
+      - djeconomy.gui.admin.economy.confirm.manage
       - djeconomy.system.reload
       - djeconomy.system.debug
       - djeconomy.system.backup
+      - djeconomy.system.doctor
       - djeconomy.admin.economy
       - djeconomy.admin.level.set
       - djeconomy.admin.level.get
@@ -277,6 +301,9 @@ permissions:
     default: false
   djeconomy.system.backup:
     description: "Create system backups"
+    default: false
+  djeconomy.system.doctor:
+    description: "Run system diagnostics via /djeconomy doctor"
     default: false
 
   # ==================== LIMIT PERMISSIONS ====================

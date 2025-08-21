@@ -48,7 +48,8 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 
 - Permissions:
   - Admin: `djeconomy.admin`
-  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
   - Player GUI: `djeconomy.gui.access`
 
 - Command safety for large amounts:
@@ -60,6 +61,7 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
         expiry_seconds: 30
     ```
   - Use `/djeconomy confirm` to finalize large economy actions.
+  - When a large action is initiated, the admin is prompted to type a reason in chat. The reason is stored with the pending confirmation and recorded in history upon confirmation. Prompts expire after the configured window.
 
 - Choose the right JAR:
   - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.
@@ -95,22 +97,26 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - `/djeconomy addxp <player> <job> <amount>` - Add XP to a player's job (online only; player must have joined the job)
 - `/djeconomy economy <give|take|set> <player> <amount>` - Manage player money (supports offline)
 - `/djeconomy confirm` - Confirm the last pending large economy action
-- `/djeconomy history <player> [limit]` - View recent admin economy actions for a player
+- `/djeconomy history <player> [page] [size]` - View recent admin economy actions for a player
+- `/djeconomy doctor` - Run system diagnostics
+- `/djeconomy businessinfo [businessName]` - View global or per-business stats
 - `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
 - `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
 
-Note: Large economy amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`. Configure via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml` and apply changes with `/djeconomy reload`.
+Note: Large economy amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`. You'll be prompted to provide a reason in chat; it will be stored with the confirmation and shown in history. Configure via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml` and apply changes with `/djeconomy reload`.
 
 ### Tab Completion
 
 - Admin command tab completion is case-insensitive for both player names and job names.
+- `/djeconomy history` suggests optional `[page]` and `[size]` arguments.
 - Business command includes tab completion for `gui` and `menu`.
 
 ### Permissions
 
 - Grant all admin features with `djeconomy.admin` or use granular nodes:
-  - `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`,
+  - `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`,
     `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`.
+  - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`.
 
 - Player GUI access: `djeconomy.gui.access`.
 

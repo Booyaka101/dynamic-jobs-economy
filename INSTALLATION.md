@@ -79,7 +79,8 @@ The plugin works perfectly with **default settings**, but you can customize:
 
 - **Permissions:**
   - Grant all admin features: `djeconomy.admin`
-  - Or granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Or granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
   - Player GUI access: `djeconomy.gui.access`
   - LuckPerms examples:
     ```bash
@@ -96,6 +97,7 @@ The plugin works perfectly with **default settings**, but you can customize:
         expiry_seconds: 30       # Window to confirm
     ```
   - Use `/djeconomy confirm` after a warning to finalize large operations.
+  - When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history upon confirmation.
 
 - **Choose the right JAR:**
   - Use the main JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.

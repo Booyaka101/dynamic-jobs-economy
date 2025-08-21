@@ -3,6 +3,8 @@
 A small polish release that refines docs and fixes the business performance reporting output.
 
 ## ✨ Improvements
+- Admin economy confirmation now includes chat reason capture. When a large action is initiated, admins are prompted to type a reason in chat; it's stored and included in the history upon confirmation.
+- History command tab completion suggests `[page]` and `[size]` for easier navigation.
 - Minor polish across business command help and GUI documentation.
 
 ## 🐛 Bug Fixes
@@ -10,6 +12,7 @@ A small polish release that refines docs and fixes the business performance repo
 
 ## 📚 Docs
 - Updated README/INSTALLATION with JAR guidance and new business GUI commands.
+- Documented admin confirmation reason capture, updated `/djeconomy history <player> [page] [size]`, and aligned permissions.
 
 ---
 
@@ -35,9 +38,16 @@ A small polish release that refines docs and fixes the business performance repo
   - Large amounts require confirmation using `/djeconomy confirm`
   - Configure thresholds via `economy.admin_confirmation.threshold`
   - Configure expiry via `economy.admin_confirmation.expiry_seconds`
+  - On large actions you'll be prompted to provide a reason in chat; it's stored and shown in history on confirm.
+- History command:
+  - `/djeconomy history <player> [page] [size]`
+  - Tab completion suggests common pages and sizes
 
 ## 🛂 Permissions
 - Player GUI access: `djeconomy.gui.access`
+- Admin: `djeconomy.admin`
+- Granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+- Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
 - (See `permissions.yml` for full list)
 
 ## 🛠️ Admin Setup (Vault, DB, Permissions)

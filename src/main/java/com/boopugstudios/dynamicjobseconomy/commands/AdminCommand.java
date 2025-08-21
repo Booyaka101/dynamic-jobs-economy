@@ -636,14 +636,15 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
             }
             if (args[0].equalsIgnoreCase("history")) {
-                return Arrays.asList("1", "2", "3", "4", "5").stream()
+                // 3rd arg is treated as size when 4th is absent
+                return Arrays.asList("1", "5", "10", "20", "50", "100").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("history")) {
-            return Arrays.asList("5", "10", "20", "50").stream()
+            return Arrays.asList("5", "10", "20", "50", "100").stream()
                 .filter(s -> s.startsWith(args[3]))
                 .collect(Collectors.toList());
         }
@@ -902,11 +903,18 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void handleHistory(CommandSender sender, String playerName, String pageStr, String sizeStr, String prefix) {
         int page = 1;
         int size = 10;
-        try { if (pageStr != null) page = Integer.parseInt(pageStr); } catch (NumberFormatException ignored) {}
-        try { if (sizeStr != null) size = Integer.parseInt(sizeStr); } catch (NumberFormatException ignored) {}
+        try {
+            if (sizeStr != null) {
+                if (pageStr != null) page = Integer.parseInt(pageStr);
+                size = Integer.parseInt(sizeStr);
+            } else if (pageStr != null) {
+                size = Integer.parseInt(pageStr);
+            }
+        } catch (NumberFormatException ignored) {
+        }
         if (page < 1) page = 1;
         if (size < 1) size = 1;
-        if (size > 50) size = 50;
+        if (size > 100) size = 100;
 
         Path path = getHistoryFile().toPath();
         if (!Files.exists(path)) {
@@ -925,7 +933,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 String target = parts[3];
                 if (!target.equalsIgnoreCase(playerName)) continue;
                 long ts;
-                try { ts = Long.parseLong(parts[0]); } catch (NumberFormatException ex) { ts = System.currentTimeMillis(); }
+                try {
+                    ts = Long.parseLong(parts[0]);
+                } catch (NumberFormatException ex) {
+                    ts = System.currentTimeMillis();
+                }
                 String admin = parts[1];
                 String action = parts[2];
                 String amount = parts[4];
@@ -952,7 +964,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             ph2.put("player", playerName);
             ph2.put("page", String.valueOf(page));
             ph2.put("pages", String.valueOf(Math.max(totalPages, 1)));
-            sender.sendMessage(prefix + msg("admin.history_header", ph2, "§eHistory for '%player%' §7(Page %page%/%pages%)"));
+            ph2.put("count", String.valueOf(to - from));
+            sender.sendMessage(prefix + msg("admin.history_header", ph2, "§eShowing last %count% entries for '%player%' §7(Page %page%/%pages%)"));
             for (int i = from; i < to; i++) {
                 sender.sendMessage(entries.get(i));
             }

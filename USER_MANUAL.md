@@ -166,8 +166,14 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
 /djeconomy confirm
   Confirm the last pending large economy action. (perm: djeconomy.admin.economy)
 
-/djeconomy history <player> [limit]
+/djeconomy history <player> [page] [size]
   View recent admin economy actions for a player. (perm: djeconomy.admin.history.view)
+
+/djeconomy doctor
+  Run system diagnostics. (perm: djeconomy.system.doctor)
+
+/djeconomy businessinfo [businessName]
+  View global or per-business stats. (perm: djeconomy.admin.businessinfo)
 
 /djeconomy refreshjobs <player>
   Reload a player's job data from DB (online only). (perm: djeconomy.admin.jobs.refresh)
@@ -178,8 +184,8 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
 
 Notes:
 - Refresh/Invalidate require the player to be online.
-- History limit is clamped between 1 and 100; non-numeric defaults to 10. If no entries or file is missing, a friendly message is shown.
-- Economy large-amount confirmation prevents accidental big changes; use `/djeconomy confirm` after the warning. Configure behavior via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml`, then apply with `/djeconomy reload`.
+- History displays are paginated; use `[page] [size]` (size clamped, defaults applied on invalid input). If no entries or file is missing, a friendly message is shown.
+- Economy large-amount confirmation prevents accidental big changes. When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history on `/djeconomy confirm`. Configure behavior via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml`, then apply with `/djeconomy reload`.
 
 #### Tab Completion
 - Admin tab completion is case-insensitive and permission-aware at the root.
@@ -188,7 +194,7 @@ Notes:
   - Second argument: `give`, `take`, `set`.
   - Third argument: online player names.
 - For `setlevel` and `addxp`, the third argument suggests job names (case-insensitive).
-- For `history`, the optional third argument suggests limits like `5`, `10`, `20`, `50`.
+- For `history`, optional arguments suggest page numbers and sizes (e.g., pages: `1`, `2`, `3`; sizes: `10`, `20`, `50`).
 
 ### **🛠️ Admin Setup Quick Reference**
 
@@ -207,9 +213,10 @@ Notes:
   ```
 - Permissions:
   - Admin: `djeconomy.admin`
-  - Granular: `djeconomy.system.reload`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
+  - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
   - Player GUI: `djeconomy.gui.access`
-- Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. Use `/djeconomy confirm` to finalize large operations.
+- Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. You'll be prompted to provide a reason in chat; it will be stored and applied when you `/djeconomy confirm`.
 
 ### **🧪 Admin Testing**
 

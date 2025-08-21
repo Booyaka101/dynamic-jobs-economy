@@ -4,6 +4,8 @@
 
 ### ✨ Improvements
 - CI now publishes SHA-256 checksums for all built artifacts and verifies integrity before upload.
+- Admin economy confirmation flow now supports optional chat-captured reasons. Large transactions prompt for a reason; `/djeconomy confirm` applies the stored reason. Components: `AdminCommand`, `AdminReasonChatListener`, `AdminConfirmationManager`.
+- `/djeconomy history` tab completion suggests `[page]` and `[size]` for quicker navigation.
 
 ### 🐛 Bug Fixes
 - 
@@ -14,6 +16,8 @@
 ### 📚 Docs
 - Removed all MongoDB references and documented dropped MongoDB support.
 - Added checksum verification instructions to `README.md` and `SPIGOTMC_UPDATE_GUIDE.md`.
+- Updated `messages.yml` with `admin.reason.prompt|hint|captured|expired` and aligned usage/help for `history` to `[page] [size]`.
+- Permissions alignment documented: `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, and GUI granular perms under `djeconomy.gui.admin.economy.*`.
 
 ## Version 1.0.5 - "Polish & Performance Reporting Fix" (August 2025)
 
