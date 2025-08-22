@@ -3,7 +3,7 @@
 A small polish release that refines docs and fixes the business performance reporting output.
 
 ## ✨ Improvements
-- Admin economy confirmation now includes chat reason capture. When a large action is initiated, admins are prompted to type a reason in chat; it's stored and included in the history upon confirmation.
+- Admin economy confirmation now uses GUI reason selection. When a large action is initiated, admins select a reason in the Admin Economy GUI (or Skip Reason); it's stored and included in the history upon confirmation.
 - History command tab completion suggests `[page]` and `[size]` for easier navigation.
 - Minor polish across business command help and GUI documentation.
 
@@ -12,7 +12,7 @@ A small polish release that refines docs and fixes the business performance repo
 
 ## 📚 Docs
 - Updated README/INSTALLATION with JAR guidance and new business GUI commands.
-- Documented admin confirmation reason capture, updated `/djeconomy history <player> [page] [size]`, and aligned permissions.
+- Documented GUI-only admin confirmation reason selection, updated `/djeconomy history <player> [page] [size]`, and aligned permissions.
 
 ---
 
@@ -38,7 +38,7 @@ A small polish release that refines docs and fixes the business performance repo
   - Large amounts require confirmation using `/djeconomy confirm`
   - Configure thresholds via `economy.admin_confirmation.threshold`
   - Configure expiry via `economy.admin_confirmation.expiry_seconds`
-  - On large actions you'll be prompted to provide a reason in chat; it's stored and shown in history on confirm.
+  - On large actions the Admin Economy GUI will prompt you to select a reason (or Skip Reason); it's stored and shown in history on confirm.
 - History command:
   - `/djeconomy history <player> [page] [size]`
   - Tab completion suggests common pages and sizes

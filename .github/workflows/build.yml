@@ -66,6 +66,11 @@ jobs:
           echo "jar_path=$JAR" >> $GITHUB_OUTPUT
           echo "jar_size=$SIZE" >> $GITHUB_OUTPUT
 
+      - name: Set size guard for spigot-lite
+        if: matrix.profile == 'spigot-lite'
+        shell: bash
+        run: echo "MAX_JAR_SIZE=5000000" >> $GITHUB_ENV
+
       - name: Enforce size guard
         if: env.MAX_JAR_SIZE != ''
         shell: bash

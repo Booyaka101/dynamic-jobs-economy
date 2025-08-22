@@ -481,14 +481,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // Execute the original command with confirmation bypass
-        // If still awaiting reason, remind and exit
-        if (mgr.isAwaitingReason(player.getUniqueId())) {
-            Map<String, String> ph = new HashMap<>();
-            ph.put("seconds", String.valueOf(mgr.getExpirySeconds()));
-            sender.sendMessage(prefix + msg("admin.reason.still_awaiting", ph, "§ePlease type a reason in chat to proceed."));
-            return;
-        }
+        // Execute the original command with confirmation bypass (reason captured via GUI, may be null)
         String storedReason = mgr.getReason(player.getUniqueId());
         PlayerResolution resolution = resolvePlayer(pending.playerName);
         if (!resolution.isValid()) {
@@ -591,12 +584,17 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> base = Arrays.asList("reload", "doctor", "gui", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "history", "refreshjobs", "invalidatejobs", "businessinfo");
+            List<String> base = Arrays.asList("reload", "doctor", "gui", "setlevel", "getlevel", "resetlevel", "addxp", "economy", "confirm", "history", "refreshjobs", "invalidatejobs", "businessinfo");
             String pref = args[0].toLowerCase();
             return base.stream()
                 .filter(s -> s.toLowerCase().startsWith(pref))
                 .filter(s -> isSubAllowed(sender, s))
                 .collect(Collectors.toList());
+        }
+
+        // Gate argument-level completions by permission for the chosen subcommand
+        if (args.length >= 2 && !isSubAllowed(sender, args[0])) {
+            return new ArrayList<>();
         }
 
         if (args.length == 2) {

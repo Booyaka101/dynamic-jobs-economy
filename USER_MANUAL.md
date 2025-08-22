@@ -185,7 +185,7 @@ Admins can grant full access with `djeconomy.admin` or use granular nodes per su
 Notes:
 - Refresh/Invalidate require the player to be online.
 - History displays are paginated; use `[page] [size]` (size clamped, defaults applied on invalid input). If no entries or file is missing, a friendly message is shown.
-- Economy large-amount confirmation prevents accidental big changes. When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history on `/djeconomy confirm`. Configure behavior via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml`, then apply with `/djeconomy reload`.
+ - Economy large-amount confirmation prevents accidental big changes. When a large action is initiated, the Admin Economy GUI prompts you to select a reason (or Skip Reason); it's stored with the pending confirmation and recorded in history on `/djeconomy confirm`. Configure behavior via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml`, then apply with `/djeconomy reload`.
 
 #### Tab Completion
 - Admin tab completion is case-insensitive and permission-aware at the root.
@@ -216,7 +216,7 @@ Notes:
   - Granular: `djeconomy.system.reload`, `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, `djeconomy.admin.economy`, `djeconomy.admin.level.get|set|reset|addxp`, `djeconomy.admin.history.view`, `djeconomy.admin.jobs.refresh|invalidate`
   - Admin Economy GUI: `djeconomy.gui.admin.economy`, `djeconomy.gui.admin.economy.balance.view`, `djeconomy.gui.admin.economy.balance.modify`, `djeconomy.gui.admin.economy.history.view`, `djeconomy.gui.admin.economy.confirm.manage`
   - Player GUI: `djeconomy.gui.access`
-- Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. You'll be prompted to provide a reason in chat; it will be stored and applied when you `/djeconomy confirm`.
+ - Large-amount safety: Configure `economy.admin_confirmation.threshold` and `expiry_seconds` in `config.yml`. The Admin Economy GUI will prompt you to select a reason (or Skip Reason); it will be stored and applied when you `/djeconomy confirm`.
 
 ### **🧪 Admin Testing**
 

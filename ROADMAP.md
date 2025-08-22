@@ -32,11 +32,11 @@ Use this file during planning/release sessions. Check items off as we implement 
   - Upload artifacts and enforce max-size thresholds
   - Tracked in `plan_ci_checksums`
   - Touchpoints: `.github/workflows/build.yml`, `pom.xml`
-- [x] Admin economy confirmation + chat reason capture for command flows (id: plan_admin_confirm_cli)
-  - Components: `AdminCommand`, `AdminReasonChatListener`, `AdminConfirmationManager`
-  - Details: large transactions prompt confirmation; admins can type reason in chat; reason stored and applied on `/djeconomy confirm`; pending expiry purge scheduled
+- [x] Admin economy confirmation with GUI reason selection (id: plan_admin_confirm_cli)
+  - Components: `AdminCommand`, `AdminEconomyGui`, `AdminConfirmationManager`
+  - Details: large transactions prompt confirmation; admins select a reason in the Admin Economy GUI (or Skip Reason); reason stored and applied on `/djeconomy confirm`; pending expiry purge scheduled
   - History: includes reason when present; direct executions store null reason
-  - Status: Implemented and wired; docs pending
+  - Status: Implemented and wired; docs updated
 - [x] Permissions alignment for new/updated nodes (id: plan_perms_alignment)
   - `djeconomy.system.doctor` added and included under `djeconomy.admin` and `djeconomy.system.*`
   - `djeconomy.admin.businessinfo` explicitly defined and nested under `djeconomy.admin`
@@ -94,7 +94,7 @@ Use this file during planning/release sessions. Check items off as we implement 
   - Size guard step exists and is configurable via `MAX_JAR_SIZE` (bytes); disabled when unset
 - plan_admin_gui (Admin Economy GUI)
   - Admin-only GUI gated by `djeconomy.gui.admin`
-  - Supports Give/Take/Set with confirmation flow for large amounts and optional reason capture
+  - Supports Give/Take/Set with confirmation flow for large amounts and optional GUI reason selection
   - Writes to existing admin history log and respects confirmation threshold/expiry from config
 - plan_perf
   - Async DB for admin economy operations on main paths
@@ -118,13 +118,13 @@ Use this file during planning/release sessions. Check items off as we implement 
  - plan_doctor_i18n: done — doctor strings in `messages.yml` including permissions tips
  - plan_doctor_perms: done — `djeconomy.system.doctor` permission declared and used; `PermissionsHealthCheck` integrated
  - plan_doctor_tests_unit: done — unit tests for validators (`ConfigValidatorTest`, `PermissionsHealthCheckTest`)
- - plan_admin_confirm_cli: done — `AdminCommand` confirmation gating and history; `AdminReasonChatListener` captures reasons via chat; expiry purge scheduled in `DynamicJobsEconomy.onEnable()`
- - plan_perms_alignment: done — `plugin.yml` updated with `djeconomy.admin.businessinfo` and `djeconomy.system.doctor`; docs synchronized
+ - plan_admin_confirm_cli: done — `AdminCommand` confirmation gating and history; GUI reason selection via `AdminEconomyGui`; expiry purge scheduled in `DynamicJobsEconomy.onEnable()`
+ - plan_perms_alignment: done — `plugin.yml` updated with `djeconomy.system.doctor` and `djeconomy.admin.businessinfo`; permission docs aligned
  - plan_history_tab: done — `/djeconomy history` tab completion suggests [page] and [size]
 
 ### 🧾 1.0.6 Release Checklist
 - [ ] Update docs: `CHANGELOG.md`, `README.md`, `INSTALLATION.md`, `QUICK_START.md`, `USER_MANUAL.md`, Spigot templates
-  - Include admin confirmation flow with chat reason capture and updated permissions (`djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, GUI granular perms)
+  - Include admin confirmation flow with GUI-only reason selection and updated permissions (`djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, GUI granular perms)
 - [ ] Build artifacts for profiles: default, `spigot-lite`, `spigot-ultra`, `spigot-ultra-mysql`, `spigot-linux-sqlite`
 - [ ] Generate and upload checksums (.sha256) for each artifact (`plan_ci_checksums`)
 - [ ] Sanity test DBs: SQLite and MySQL on 1.20.4–1.21.x
@@ -205,6 +205,6 @@ Use this file during planning/release sessions. Check items off as we implement 
 
 ## 🗂️ Done (link PRs/commits)
 - [x] plan_ci_matrix — build matrix, artifact upload, and size guard in `.github/workflows/build.yml`
- - [x] plan_admin_confirm_cli — command flow confirmation and chat reason capture wired (`AdminCommand`, `AdminReasonChatListener`)
+ - [x] plan_admin_confirm_cli — command flow confirmation with GUI reason selection wired (`AdminCommand`, `AdminEconomyGui`)
  - [x] plan_perms_alignment — updated `plugin.yml` for `djeconomy.system.doctor` and `djeconomy.admin.businessinfo`; permission docs aligned
  - [x] plan_history_tab — improved tab completion for `/djeconomy history`

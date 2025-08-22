@@ -61,7 +61,7 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
         expiry_seconds: 30
     ```
   - Use `/djeconomy confirm` to finalize large economy actions.
-  - When a large action is initiated, the admin is prompted to type a reason in chat. The reason is stored with the pending confirmation and recorded in history upon confirmation. Prompts expire after the configured window.
+  - When a large action is initiated, the Admin Economy GUI prompts you to select a reason (or Skip Reason). The selected reason is stored with the pending confirmation and recorded in history upon confirmation. Pending confirmations expire after the configured window.
 
 - Choose the right JAR:
   - Use the main shaded JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.
@@ -103,7 +103,7 @@ Want to customize? Check `plugins/DynamicJobsEconomy/config.yml`
 - `/djeconomy refreshjobs <player>` - Reload a player's job data from DB (online only)
 - `/djeconomy invalidatejobs <player>` - Invalidate cached job data (online only)
 
-Note: Large economy amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`. You'll be prompted to provide a reason in chat; it will be stored with the confirmation and shown in history. Configure via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml` and apply changes with `/djeconomy reload`.
+Note: Large economy amounts at or above the configured threshold require confirmation within the configured expiry window using `/djeconomy confirm`. The Admin Economy GUI will prompt you to select a reason (or Skip Reason); it will be stored with the confirmation and shown in history. Configure via `economy.admin_confirmation.threshold` and `economy.admin_confirmation.expiry_seconds` in `config.yml` and apply changes with `/djeconomy reload`.
 
 ### Tab Completion
 

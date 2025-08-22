@@ -97,7 +97,7 @@ The plugin works perfectly with **default settings**, but you can customize:
         expiry_seconds: 30       # Window to confirm
     ```
   - Use `/djeconomy confirm` after a warning to finalize large operations.
-  - When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history upon confirmation.
+  - When a large action is initiated, the Admin Economy GUI prompts you to select a reason (or Skip Reason); it's stored with the pending confirmation and recorded in history upon confirmation.
 
 - **Choose the right JAR:**
   - Use the main JAR for most servers: `DynamicJobsEconomy-1.0.5.jar`.

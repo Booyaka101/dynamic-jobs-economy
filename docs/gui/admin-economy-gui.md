@@ -33,7 +33,7 @@ Notes:
 3) Player Account View
 - Header: Player head, name, UUID, current balance
 - Actions (requires permissions):
-  - Give +N, Take −N, Set =N (pre-filled amounts: 100, 1k, 10k, custom anvil input)
+  - Give +N, Take −N, Set =N (pre-filled amounts: 100, 1k, 10k, custom keypad input)
   - Confirm flow: if amount >= `economy.admin_confirmation.threshold`, create pending confirmation (expiry `economy.admin_confirmation.expiry_seconds`).
 - Tabs:
   - Overview (default)
@@ -41,8 +41,13 @@ Notes:
 
 4) Confirmations Queue (requires confirm.manage)
 - List pending items: requester, target, action, amount, created at, expires at
-- Actions: Approve, Deny; optional reason (anvil input)
+- Actions: Approve, Deny; optional reason selection (GUI preset options or Skip Reason)
 - Auto-expire handling shown inline
+
+5) Reason Selection (GUI)
+- Title: "Select Reason"
+- Preset options (e.g., Refund (bug), Anti-cheat action, Manual adjustment, Business payout correction)
+- "Skip Reason" option to proceed without a reason
 
 ## Layout and UX
 - Inventory size: 54 (6 rows) standard; use `config.yml` gui.useFillerPanes framing
@@ -79,13 +84,16 @@ Note: If methods do not exist, provide wrappers in a dedicated `AdminEconomyServ
 - gui.admin.economy.title.home: "Admin Economy"
 - gui.admin.economy.title.player_select: "Select Player"
 - gui.admin.economy.title.player: "Player • %player%"
+- gui.admin.economy.title.confirm_queue: "Pending Confirmations"
+- gui.admin.economy.title.amount_input: "Enter Amount"
+- gui.admin.economy.title.reason_select: "Select Reason"
 - gui.admin.economy.action.give: "Give %amount%"
 - gui.admin.economy.action.take: "Take %amount%"
 - gui.admin.economy.action.set: "Set %amount%"
 - gui.admin.economy.history.header: "Recent Transactions"
 - gui.admin.economy.confirm.required: "Confirmation required for %amount%+"
 - gui.admin.economy.confirm.created: "Pending confirmation created (expires in %seconds%s)"
-- gui.admin.economy.confirm.queue.title: "Pending Confirmations"
+- gui.admin.economy.confirm.queue_title: "Pending Confirmations"
 - gui.admin.economy.confirm.approved: "Approved by %admin%"
 - gui.admin.economy.confirm.denied: "Denied by %admin% (%reason%)"
 - gui.admin.economy.error.no_permission: "You lack permission: %node%"

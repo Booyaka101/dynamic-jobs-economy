@@ -50,10 +50,7 @@ admin:
   confirm_expired: "§cConfirmation expired! Please retry the command."
   confirm_cancelled: "§7Pending action cancelled."
   reason:
-    prompt: "§ePlease type a reason in chat for this action (expires in %seconds%s)."
-    hint: "§7Example: 'Refund for bug', 'Anti-cheat action', or 'Manual adjustment'."
     captured: "§aReason captured. Executing confirmation..."
-    expired: "§cReason capture expired. Please retry the command."
   gui:
     players_only: "§cOnly players can open the GUI!"
 
@@ -183,6 +180,8 @@ gui:
         player_select: "Select Player"
         player: "Player • %player%"
         confirm_queue: "Pending Confirmations"
+        amount_input: "Enter Amount"
+        reason_select: "Select Reason"
       action:
         give: "Give %amount%"
         take: "Take %amount%"

@@ -65,7 +65,7 @@ When you start your server, you'll see:
         expiry_seconds: 30
     ```
   - Use `/djeconomy confirm` to finalize large admin money actions.
-  - When a large action is initiated, you'll be prompted to type a reason in chat; it's stored with the pending confirmation and recorded in history upon confirmation.
+  - When a large action is initiated, the Admin Economy GUI prompts you to select a reason (or Skip Reason); it's stored with the pending confirmation and recorded in history upon confirmation.
 
 ### **For Players:**
 

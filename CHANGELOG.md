@@ -2,9 +2,26 @@
 
 ## Unreleased
 
+## Version 1.0.5-SNAPSHOT - In Progress
+
+### ✨ Improvements
+- Admin tab completion now includes `confirm` and respects permission gating for argument-level suggestions in `AdminCommand.onTabComplete`.
+- Admin Economy GUI now enforces granular permissions:
+  - `djeconomy.gui.admin.economy` to open the GUI
+  - `djeconomy.gui.admin.economy.balance.view` to view balances
+  - `djeconomy.gui.admin.economy.balance.modify` to access Give/Take/Set actions
+  - `djeconomy.gui.admin.economy.confirm.manage` to view/approve/cancel confirmations in GUI
+- Bumped project version to `1.0.5-SNAPSHOT`.
+
+### 🔧 CI
+- Workflow enforces a concrete artifact size guard for the `spigot-lite` profile to keep uploads lightweight.
+
+### 📚 Docs
+- `docs/gui/admin-economy-gui.md` is the guiding design spec; GUI now aligns with its permission model and confirmation flow.
+
 ### ✨ Improvements
 - CI now publishes SHA-256 checksums for all built artifacts and verifies integrity before upload.
-- Admin economy confirmation flow now supports optional chat-captured reasons. Large transactions prompt for a reason; `/djeconomy confirm` applies the stored reason. Components: `AdminCommand`, `AdminReasonChatListener`, `AdminConfirmationManager`.
+- Admin economy confirmation flow now uses GUI-based reason selection. Large transactions prompt for a reason in the Admin Economy GUI (or Skip Reason); `/djeconomy confirm` applies the stored reason. Components: `AdminCommand`, `AdminEconomyGui`, `AdminConfirmationManager`.
 - `/djeconomy history` tab completion suggests `[page]` and `[size]` for quicker navigation.
 
 ### 🐛 Bug Fixes
@@ -16,7 +33,7 @@
 ### 📚 Docs
 - Removed all MongoDB references and documented dropped MongoDB support.
 - Added checksum verification instructions to `README.md` and `SPIGOTMC_UPDATE_GUIDE.md`.
-- Updated `messages.yml` with `admin.reason.prompt|hint|captured|expired` and aligned usage/help for `history` to `[page] [size]`.
+- Updated `messages.yml` to remove chat-based reason prompts and expiry messages, retained the reason-captured message, and added GUI titles for reason selection and amount input. Aligned usage/help for `history` to `[page] [size]`.
 - Permissions alignment documented: `djeconomy.system.doctor`, `djeconomy.admin.businessinfo`, and GUI granular perms under `djeconomy.gui.admin.economy.*`.
 
 ## Version 1.0.5 - "Polish & Performance Reporting Fix" (August 2025)

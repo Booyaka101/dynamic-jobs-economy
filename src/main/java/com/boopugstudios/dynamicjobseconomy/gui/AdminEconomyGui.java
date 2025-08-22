@@ -1,8 +1,8 @@
 package com.boopugstudios.dynamicjobseconomy.gui;
 
 import com.boopugstudios.dynamicjobseconomy.DynamicJobsEconomy;
-import com.boopugstudios.dynamicjobseconomy.economy.EconomyManager;
 import com.boopugstudios.dynamicjobseconomy.admin.AdminConfirmationManager;
+import com.boopugstudios.dynamicjobseconomy.economy.EconomyManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -37,6 +37,8 @@ public class AdminEconomyGui implements Listener {
     private final DynamicJobsEconomy plugin;
     private final EconomyManager economy;
     private final Map<UUID, Session> sessions = new HashMap<>();
+    // Removed chat-based amount prompts; replaced by GUI keypad input
+    // private final Map<UUID, AmountPrompt> amountPrompts = new ConcurrentHashMap<>();
     private final boolean debugClicks;
     private final boolean useFillerPanes;
 
@@ -52,6 +54,9 @@ public class AdminEconomyGui implements Listener {
         HOME("Admin Economy", 54),
         PLAYER_SELECTOR("Select Player", 54),
         PLAYER_ACCOUNT("Player Account", 54),
+        // New views for GUI-based input
+        AMOUNT_INPUT("Enter Amount", 54),
+        REASON_SELECT("Select Reason", 54),
         CONFIRMATIONS("Pending Confirmations", 54);
         private final String title;
         private final int size;
@@ -64,12 +69,19 @@ public class AdminEconomyGui implements Listener {
         private View view;
         private UUID targetPlayerId;
         private long last;
+        // GUI input state
+        private String pendingAction; // give | take | set
+        private String amountInput;   // numeric text buffer
         public Session(View view) { this.view = view; this.last = System.currentTimeMillis(); }
         public View getView() { return view; }
         public void setView(View v) { this.view = v; this.last = System.currentTimeMillis(); }
         public UUID getTargetPlayerId() { return targetPlayerId; }
         public void setTargetPlayerId(UUID id) { this.targetPlayerId = id; this.last = System.currentTimeMillis(); }
         public boolean isExpired() { return System.currentTimeMillis() - last > 300000L; }
+        public String getPendingAction() { return pendingAction; }
+        public void setPendingAction(String action) { this.pendingAction = action; this.last = System.currentTimeMillis(); }
+        public String getAmountInput() { return amountInput; }
+        public void setAmountInput(String input) { this.amountInput = input; this.last = System.currentTimeMillis(); }
     }
 
     private static class Holder implements InventoryHolder {
@@ -94,7 +106,11 @@ public class AdminEconomyGui implements Listener {
 
         // Primary actions
         inv.setItem(20, menuItem(Material.PLAYER_HEAD, color("&bPlayer Selector"), Arrays.asList(color("&7Browse online players"), color("&eClick to open"))));
-        inv.setItem(24, menuItem(Material.PAPER, color("&dConfirmations"), Arrays.asList(color("&7Review pending confirmations"), color("&eClick to open"))));
+        if (player.hasPermission("djeconomy.gui.admin.economy.confirm.manage")) {
+            inv.setItem(24, menuItem(Material.PAPER, color("&dConfirmations"), Arrays.asList(color("&7Review pending confirmations"), color("&eClick to open"))));
+        } else {
+            inv.setItem(24, menuItem(Material.BARRIER, color("&8Confirmations"), Arrays.asList(color("&7Missing permission: djeconomy.gui.admin.economy.confirm.manage"))));
+        }
 
         // Close
         inv.setItem(49, menuItem(Material.BARRIER, color("&cClose"), Collections.singletonList(color("&7Close this menu"))));
@@ -112,6 +128,7 @@ public class AdminEconomyGui implements Listener {
 
         List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
         online.sort(Comparator.comparing(Player::getName, String.CASE_INSENSITIVE_ORDER));
+        boolean canView = player.hasPermission("djeconomy.gui.admin.economy.balance.view");
 
         for (int i = 0; i < Math.min(45, online.size()); i++) {
             Player p = online.get(i);
@@ -121,11 +138,21 @@ public class AdminEconomyGui implements Listener {
                 SkullMeta sm = (SkullMeta) meta;
                 sm.setOwningPlayer(p);
                 sm.setDisplayName(color("&a" + p.getName()));
-                sm.setLore(Arrays.asList(color("&7Click to view account")));
+                List<String> lore = new ArrayList<>();
+                if (canView) {
+                    lore.add(color("&7Balance: &6" + economy.formatMoney(economy.getBalance(p))));
+                }
+                lore.add(color("&7Click to view account"));
+                sm.setLore(lore);
                 head.setItemMeta(sm);
             } else if (meta != null) {
                 meta.setDisplayName(color("&a" + p.getName()));
-                meta.setLore(Arrays.asList(color("&7Click to view account")));
+                List<String> lore = new ArrayList<>();
+                if (canView) {
+                    lore.add(color("&7Balance: &6" + economy.formatMoney(economy.getBalance(p))));
+                }
+                lore.add(color("&7Click to view account"));
+                meta.setLore(lore);
                 head.setItemMeta(meta);
             }
             inv.setItem(i, head);
@@ -147,25 +174,35 @@ public class AdminEconomyGui implements Listener {
         Inventory inv = Bukkit.createInventory(new Holder(View.PLAYER_ACCOUNT), View.PLAYER_ACCOUNT.size(), color("&2" + title));
 
         // Head + balance display
-        inv.setItem(4, playerHead(target, color("&a" + (target.getName() != null ? target.getName() : target.getUniqueId().toString())), Arrays.asList(
-            color("&7Balance:"),
-            color("&6" + economy.formatMoney(economy.getBalance(target)))
-        )));
+        boolean canView = admin.hasPermission("djeconomy.gui.admin.economy.balance.view");
+        List<String> headLore = new ArrayList<>();
+        if (canView) {
+            headLore.add(color("&7Balance:"));
+            headLore.add(color("&6" + economy.formatMoney(economy.getBalance(target))));
+        } else {
+            headLore.add(color("&7Balance: &8<hidden>"));
+            headLore.add(color("&8Requires djeconomy.gui.admin.economy.balance.view"));
+        }
+        inv.setItem(4, playerHead(target, color("&a" + (target.getName() != null ? target.getName() : target.getUniqueId().toString())), headLore));
 
         boolean canModify = admin.hasPermission("djeconomy.gui.admin.economy.balance.modify");
 
-        // Placeholders for actions (minimal implementation routes admin to commands)
+        // Action buttons now open GUI-based amount input
+        String thresholdStr = economy.formatMoney(getConfirmThreshold());
         inv.setItem(20, menuItem(Material.LIME_DYE, color("&aGive Money"), Arrays.asList(
-            color("&7Use command:"),
-            color("&e/djeconomy economy give " + safeName(target) + " <amount>")
+            color("&7Click to enter an amount"),
+            color("&7Large amounts may require confirmation"),
+            color("&8Threshold: &e" + thresholdStr)
         )));
         inv.setItem(22, menuItem(Material.RED_DYE, color("&cTake Money"), Arrays.asList(
-            color("&7Use command:"),
-            color("&e/djeconomy economy take " + safeName(target) + " <amount>")
+            color("&7Click to enter an amount"),
+            color("&7Large amounts may require confirmation"),
+            color("&8Threshold: &e" + thresholdStr)
         )));
         inv.setItem(24, menuItem(Material.GOLD_INGOT, color("&6Set Balance"), Arrays.asList(
-            color("&7Use command:"),
-            color("&e/djeconomy economy set " + safeName(target) + " <amount>")
+            color("&7Click to enter an amount"),
+            color("&7Large amounts may require confirmation"),
+            color("&8Threshold: &e" + thresholdStr)
         )));
 
         if (!canModify) {
@@ -184,6 +221,13 @@ public class AdminEconomyGui implements Listener {
     }
 
     private void openConfirmations(Player player) {
+        if (!player.hasPermission("djeconomy.gui.admin.economy.confirm.manage")) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("node", "djeconomy.gui.admin.economy.confirm.manage");
+            player.sendMessage(getPrefix() + msg("gui.admin.economy.error.no_permission", ph, "You lack permission: %node%"));
+            openHome(player);
+            return;
+        }
         String title = msg("gui.admin.economy.title.confirm_queue", null, "Pending Confirmations");
         Inventory inv = Bukkit.createInventory(new Holder(View.CONFIRMATIONS), View.CONFIRMATIONS.size(), color("&d" + title));
 
@@ -283,43 +327,53 @@ public class AdminEconomyGui implements Listener {
             case PLAYER_ACCOUNT:
                 if ("Back to Players".equalsIgnoreCase(name)) { openPlayerSelector(p); break; }
                 if ("Close".equalsIgnoreCase(name)) { p.closeInventory(); break; }
-                // Route to commands if clicked on action items
+                // Start GUI-based amount input flow
                 if (name.equalsIgnoreCase("Give Money") || name.equalsIgnoreCase("Take Money") || name.equalsIgnoreCase("Set Balance")) {
+                    if (!p.hasPermission("djeconomy.gui.admin.economy.balance.modify")) {
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("node", "djeconomy.gui.admin.economy.balance.modify");
+                        p.sendMessage(getPrefix() + msg("gui.admin.economy.error.no_permission", ph, "You lack permission: %node%"));
+                        break;
+                    }
                     if (s.getTargetPlayerId() != null) {
                         OfflinePlayer tgt = Bukkit.getOfflinePlayer(s.getTargetPlayerId());
-                        String tname = safeName(tgt);
-                        String sub = name.toLowerCase().contains("give") ? "give" : name.toLowerCase().contains("take") ? "take" : "set";
-                        p.closeInventory();
-                        p.sendMessage(getPrefix() + color("&eUse &f/djeconomy economy " + sub + " " + tname + " <amount> &eto perform this action."));
+                        String action = name.toLowerCase().contains("give") ? "give" : name.toLowerCase().contains("take") ? "take" : "set";
+                        s.setPendingAction(action);
+                        s.setAmountInput("");
+                        openAmountInput(p, tgt, action);
                     }
                 }
                 break;
             case CONFIRMATIONS:
                 if ("Back".equalsIgnoreCase(name)) { openHome(p); break; }
                 if ("Approve".equalsIgnoreCase(name)) {
-                    // Switch to chat-based reason capture instead of immediate confirmation
+                    if (!p.hasPermission("djeconomy.gui.admin.economy.confirm.manage")) {
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("node", "djeconomy.gui.admin.economy.confirm.manage");
+                        p.sendMessage(getPrefix() + msg("gui.admin.economy.error.no_permission", ph, "You lack permission: %node%"));
+                        break;
+                    }
+                    // Open GUI-based reason selection instead of chat capture
                     AdminConfirmationManager mgr = plugin.getAdminConfirmationManager();
                     AdminConfirmationManager.PendingAdminAction pending = (mgr != null) ? mgr.getPending(p.getUniqueId()) : null;
                     try {
                         if (pending != null) {
-                            plugin.getLogger().info(String.format("[ADMIN-GUI] %s approved (awaiting reason) %s %s $%.2f",
+                            plugin.getLogger().info(String.format("[ADMIN-GUI] %s approved (selecting reason) %s %s $%.2f",
                                 p.getName(), String.valueOf(pending.action), String.valueOf(pending.playerName), pending.amount));
-                            if (mgr != null) {
-                                mgr.setAwaitingReason(p.getUniqueId(), true);
-                            }
                         } else {
                             plugin.getLogger().info(String.format("[ADMIN-GUI] %s clicked Approve with no pending action", p.getName()));
                         }
                     } catch (Throwable ignored) {}
-                    p.closeInventory();
-                    // Prompt for reason via chat
-                    Map<String, String> ph = new HashMap<>();
-                    ph.put("seconds", String.valueOf(plugin.getAdminConfirmationManager().getExpirySeconds()));
-                    p.sendMessage(getPrefix() + msg("admin.reason.prompt", ph, "§ePlease type a reason in chat for this action (expires in %seconds%s)."));
-                    p.sendMessage(getPrefix() + msg("admin.reason.hint", null, "§7Example: 'Refund for bug', 'Anti-cheat action', or 'Manual adjustment'."));
+                    openReasonSelect(p);
                     break;
                 }
                 if ("Cancel".equalsIgnoreCase(name)) {
+                    if (!p.hasPermission("djeconomy.gui.admin.economy.confirm.manage")) {
+                        Map<String, String> ph = new HashMap<>();
+                        ph.put("node", "djeconomy.gui.admin.economy.confirm.manage");
+                        p.sendMessage(getPrefix() + msg("gui.admin.economy.error.no_permission", ph, "You lack permission: %node%"));
+                        break;
+                    }
                     AdminConfirmationManager mgr = plugin.getAdminConfirmationManager();
                     AdminConfirmationManager.PendingAdminAction pending = (mgr != null) ? mgr.getPending(p.getUniqueId()) : null;
                     try {
@@ -338,6 +392,140 @@ public class AdminEconomyGui implements Listener {
                     break;
                 }
                 break;
+            case AMOUNT_INPUT: {
+                // Keypad handling and confirmation
+                String prefix = getPrefix();
+                if ("Cancel".equalsIgnoreCase(name)) {
+                    // Return to player account if possible
+                    if (s.getTargetPlayerId() != null) {
+                        OfflinePlayer tgt = Bukkit.getOfflinePlayer(s.getTargetPlayerId());
+                        openPlayerAccount(p, tgt);
+                    } else {
+                        openHome(p);
+                    }
+                    break;
+                }
+                if ("Backspace".equalsIgnoreCase(name)) {
+                    String cur = s.getAmountInput() == null ? "" : s.getAmountInput();
+                    if (!cur.isEmpty()) {
+                        s.setAmountInput(cur.substring(0, cur.length() - 1));
+                    }
+                    // Refresh view
+                    OfflinePlayer tgt = Bukkit.getOfflinePlayer(s.getTargetPlayerId());
+                    openAmountInput(p, tgt, s.getPendingAction());
+                    break;
+                }
+                if ("Clear".equalsIgnoreCase(name)) {
+                    s.setAmountInput("");
+                    OfflinePlayer tgt = Bukkit.getOfflinePlayer(s.getTargetPlayerId());
+                    openAmountInput(p, tgt, s.getPendingAction());
+                    break;
+                }
+                if ("Confirm".equalsIgnoreCase(name)) {
+                    String inp = s.getAmountInput() == null ? "" : s.getAmountInput();
+                    if (inp.isEmpty() || ".".equals(inp)) {
+                        p.sendMessage(prefix + msg("admin.invalid_amount", null, "§cInvalid amount!"));
+                        break;
+                    }
+                    try {
+                        double amount = Double.parseDouble(inp);
+                        if (amount < 0) {
+                            p.sendMessage(prefix + msg("admin.negative_amount", null, "§cAmount cannot be negative!"));
+                            break;
+                        }
+                        double MAX = 1_000_000_000d;
+                        if (amount > MAX) {
+                            Map<String, String> ph = new HashMap<>();
+                            ph.put("max", com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(MAX));
+                            p.sendMessage(prefix + msg("admin.amount_too_large", ph, "§cAmount too large! Maximum: %max%"));
+                            break;
+                        }
+                        UUID targetId = s.getTargetPlayerId();
+                        if (targetId == null || s.getPendingAction() == null) {
+                            p.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
+                            break;
+                        }
+                        // Threshold check -> create pending confirmation or execute immediately
+                        if (amount >= getConfirmThreshold()) {
+                            AdminConfirmationManager mgr = plugin.getAdminConfirmationManager();
+                            OfflinePlayer off = Bukkit.getOfflinePlayer(targetId);
+                            String playerName = off != null && off.getName() != null ? off.getName() : (Bukkit.getPlayer(targetId) != null ? Bukkit.getPlayer(targetId).getName() : safeName(off));
+                            if (mgr != null) {
+                                mgr.putPending(p.getUniqueId(), s.getPendingAction(), playerName, amount);
+                            }
+                            Map<String, String> ph1 = new HashMap<>();
+                            ph1.put("money", com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(amount));
+                            p.sendMessage(prefix + msg("admin.large_detected", ph1, "§e⚠ Large amount detected: %money%"));
+                            Map<String, String> ph2 = new HashMap<>();
+                            ph2.put("seconds", String.valueOf(plugin.getAdminConfirmationManager().getExpirySeconds()));
+                            p.sendMessage(prefix + msg("admin.confirm_prompt", ph2, "§eUse §f/djeconomy confirm §eto proceed (expires in %seconds% seconds)"));
+                            openConfirmations(p);
+                        } else {
+                            boolean ok = executeEconomyAction(p, s.getPendingAction(), targetId, amount, prefix);
+                            // Return to player account after execution
+                            OfflinePlayer tgt = Bukkit.getOfflinePlayer(targetId);
+                            openPlayerAccount(p, tgt);
+                            if (!ok) {
+                                p.sendMessage(prefix + msg("admin.failed_execute", null, "§cFailed to execute economy command!"));
+                            }
+                        }
+                    } catch (NumberFormatException ex) {
+                        p.sendMessage(prefix + msg("admin.invalid_amount", null, "§cInvalid amount!"));
+                    }
+                    break;
+                }
+                // Digits and decimal point
+                if ("0".equals(name) || "1".equals(name) || "2".equals(name) || "3".equals(name) ||
+                    "4".equals(name) || "5".equals(name) || "6".equals(name) || "7".equals(name) ||
+                    "8".equals(name) || "9".equals(name) || ".".equals(name)) {
+                    String cur = s.getAmountInput() == null ? "" : s.getAmountInput();
+                    if (".".equals(name)) {
+                        if (cur.contains(".")) { break; }
+                        if (cur.isEmpty()) cur = "0"; // prepend 0 for leading dot
+                        cur = cur + ".";
+                    } else {
+                        // Limit to 12 characters to avoid spam
+                        if (cur.length() >= 12) { break; }
+                        cur = cur + name;
+                    }
+                    s.setAmountInput(cur);
+                    OfflinePlayer tgt = Bukkit.getOfflinePlayer(s.getTargetPlayerId());
+                    openAmountInput(p, tgt, s.getPendingAction());
+                }
+                break;
+            }
+            case REASON_SELECT: {
+                String prefix = getPrefix();
+                if ("Back".equalsIgnoreCase(name)) { openConfirmations(p); break; }
+                AdminConfirmationManager mgr = plugin.getAdminConfirmationManager();
+                if (mgr == null) { p.sendMessage(prefix + msg("admin.no_pending_confirm", null, "§cNo pending action to confirm!")); openHome(p); break; }
+                AdminConfirmationManager.PendingAdminAction pending = mgr.getPending(p.getUniqueId());
+                if (pending == null) { p.sendMessage(prefix + msg("admin.no_pending_confirm", null, "§cNo pending action to confirm!")); openHome(p); break; }
+                // Expiry check
+                if (pending.isExpired(System.currentTimeMillis(), mgr.getExpiryMillis())) {
+                    mgr.remove(p.getUniqueId());
+                    p.sendMessage(prefix + msg("admin.confirm_expired", null, "§cConfirmation expired! Please retry the command."));
+                    openHome(p);
+                    break;
+                }
+                String chosenReason = null;
+                if ("Skip Reason".equalsIgnoreCase(name)) {
+                    chosenReason = null;
+                } else if (!"".equals(name) && !"Back".equalsIgnoreCase(name)) {
+                    chosenReason = name;
+                }
+                mgr.setReason(p.getUniqueId(), chosenReason);
+                // Acknowledge and execute confirm on main thread
+                p.sendMessage(prefix + msg("admin.reason.captured", null, "§aReason captured. Executing confirmation..."));
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        p.performCommand("djeconomy confirm");
+                    } catch (Throwable ignored) {
+                        Bukkit.dispatchCommand(p, "djeconomy confirm");
+                    }
+                });
+                break;
+            }
         }
     }
 
@@ -358,6 +546,7 @@ public class AdminEconomyGui implements Listener {
             sessions.remove(e.getPlayer().getUniqueId());
         }
     }
+    // Chat-based amount input removed; replaced by GUI keypad in AMOUNT_INPUT view
 
     // ---------- Helpers ----------
 
@@ -411,6 +600,12 @@ public class AdminEconomyGui implements Listener {
         } catch (Throwable ignored) {}
         return "§8[§6DynamicJobs§8] ";
     }
+    // Config accessors mirror those in AdminCommand
+    private double getConfirmThreshold() {
+        double v = plugin.getConfig().getDouble("economy.admin_confirmation.threshold", 100000.0);
+        return v <= 0 ? 100000.0 : v;
+    }
+    // removed unused getConfirmExpirySeconds()
     /**
      * Localized message helper using messages.yml with safe fallback to defaults.
      */
@@ -431,4 +626,165 @@ public class AdminEconomyGui implements Listener {
         return out;
     }
     private String safeName(OfflinePlayer p) { return p.getName() != null ? p.getName() : p.getUniqueId().toString(); }
+
+    // ---------- New GUI Input Flows ----------
+
+    private void openAmountInput(Player admin, OfflinePlayer target, String action) {
+        String title = msg("gui.admin.economy.title.amount_input", null, "Enter Amount");
+        Inventory inv = Bukkit.createInventory(new Holder(View.AMOUNT_INPUT), View.AMOUNT_INPUT.size(), color("&e" + title));
+
+        Session s = sessions.computeIfAbsent(admin.getUniqueId(), id -> new Session(View.AMOUNT_INPUT));
+        s.setView(View.AMOUNT_INPUT);
+        s.setTargetPlayerId(target.getUniqueId());
+        s.setPendingAction(action);
+        if (s.getAmountInput() == null) s.setAmountInput("");
+
+        // Display panel
+        String display = (s.getAmountInput().isEmpty() ? "_" : s.getAmountInput());
+        List<String> lore = new ArrayList<>();
+        lore.add(color("&7Target: &f" + safeName(target)));
+        lore.add(color("&7Action: &f" + action.toUpperCase(Locale.ROOT)));
+        lore.add(color("&7Input: &6" + display));
+        lore.add(color("&8Use keypad below. '.' allowed."));
+        inv.setItem(4, menuItem(Material.PAPER, color("&bAmount Entry"), lore));
+
+        // Keypad digits
+        Map<Integer, String> keys = new HashMap<>();
+        keys.put(19, "7"); keys.put(20, "8"); keys.put(21, "9");
+        keys.put(28, "4"); keys.put(29, "5"); keys.put(30, "6");
+        keys.put(37, "1"); keys.put(38, "2"); keys.put(39, "3");
+        keys.put(40, "0"); keys.put(41, ".");
+        for (Map.Entry<Integer, String> e : keys.entrySet()) {
+            String k = e.getValue();
+            Material mat = k.equals(".") ? Material.LIGHT_GRAY_DYE : Material.YELLOW_DYE;
+            inv.setItem(e.getKey(), menuItem(mat, color("&f" + k), Collections.singletonList(color("&7Click to add"))));
+        }
+        // Backspace, Clear, Confirm, Back
+        inv.setItem(42, menuItem(Material.FLINT, color("&eBackspace"), Collections.singletonList(color("&7Remove last character"))));
+        inv.setItem(25, menuItem(Material.BARRIER, color("&cClear"), Collections.singletonList(color("&7Reset input"))));
+        inv.setItem(34, menuItem(Material.LIME_DYE, color("&aConfirm"), Arrays.asList(color("&7Proceed with amount"), color("&8Large amounts will require confirmation"))));
+        inv.setItem(49, menuItem(Material.ARROW, color("&eCancel"), Collections.singletonList(color("&7Go back"))));
+
+        fill(inv, Material.YELLOW_STAINED_GLASS_PANE);
+        admin.openInventory(inv);
+    }
+
+    public void openReasonSelect(Player player) {
+        String title = msg("gui.admin.economy.title.reason_select", null, "Select Reason");
+        Inventory inv = Bukkit.createInventory(new Holder(View.REASON_SELECT), View.REASON_SELECT.size(), color("&d" + title));
+
+        List<String> options = Arrays.asList(
+            "Refund (bug)",
+            "Anti-cheat action",
+            "Manual adjustment",
+            "Business payout correction"
+        );
+        int[] slots = {20, 21, 22, 23};
+        for (int i = 0; i < options.size(); i++) {
+            inv.setItem(slots[i], menuItem(Material.PAPER, color("&f" + options.get(i)), Collections.singletonList(color("&7Use this reason"))));
+        }
+        inv.setItem(31, menuItem(Material.BARRIER, color("&7Skip Reason"), Collections.singletonList(color("&7No reason provided"))));
+        inv.setItem(49, menuItem(Material.ARROW, color("&eBack"), Collections.singletonList(color("&7Return"))));
+
+        fill(inv, Material.PURPLE_STAINED_GLASS_PANE);
+        player.openInventory(inv);
+        Session s = sessions.computeIfAbsent(player.getUniqueId(), id -> new Session(View.REASON_SELECT));
+        s.setView(View.REASON_SELECT);
+    }
+
+    // --- Immediate execution helpers (replicate AdminCommand behavior) ---
+    private boolean executeEconomyAction(Player sender, String action, UUID targetId, double amount, String prefix) {
+        OfflinePlayer off = Bukkit.getOfflinePlayer(targetId);
+        Player online = Bukkit.getPlayer(targetId);
+        boolean isOnline = online != null && online.isOnline();
+        EconomyManager econ = plugin.getEconomyManager();
+
+        // Inform if offline
+        if (!isOnline) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("player", safeName(off));
+            sender.sendMessage(prefix + msg("admin.offline_note", ph, "§7Note: Player '%player%' is offline. Processing transaction..."));
+        }
+
+        switch (action.toLowerCase(Locale.ROOT)) {
+            case "give": {
+                boolean ok = isOnline ? econ.deposit(online, amount) : econ.depositPlayer(off, amount);
+                if (ok) {
+                    String money = com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("money", money);
+                    ph.put("player", safeName(off));
+                    sender.sendMessage(prefix + msg("admin.give_success", ph, "§aGave %money% to %player%"));
+                    appendHistory(sender.getName(), "GIVE", safeName(off), amount, null);
+                    try { plugin.getAdminAuditLogger().logEconomyAction(sender, "give", safeName(off), amount); } catch (Throwable ignored) {}
+                    return true;
+                }
+                return false;
+            }
+            case "take": {
+                double balance = isOnline ? econ.getBalance(online) : econ.getBalance(off);
+                if (balance < amount) {
+                    String balStr = com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(balance);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("balance", balStr);
+                    sender.sendMessage(prefix + msg("admin.take_insufficient", ph, "§cPlayer only has %balance%!"));
+                    return true;
+                }
+                boolean ok = isOnline ? econ.withdraw(online, amount) : econ.withdraw(off, amount);
+                if (ok) {
+                    String money = com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("money", money);
+                    ph.put("player", safeName(off));
+                    sender.sendMessage(prefix + msg("admin.take_success", ph, "§aTook %money% from %player%"));
+                    appendHistory(sender.getName(), "TAKE", safeName(off), amount, null);
+                    try { plugin.getAdminAuditLogger().logEconomyAction(sender, "take", safeName(off), amount); } catch (Throwable ignored) {}
+                    return true;
+                }
+                return false;
+            }
+            case "set": {
+                double current = isOnline ? econ.getBalance(online) : econ.getBalance(off);
+                boolean withdrew = true;
+                if (current > 0) {
+                    withdrew = isOnline ? econ.withdraw(online, current) : econ.withdraw(off, current);
+                }
+                if (!withdrew) return false;
+                boolean deposited = isOnline ? econ.deposit(online, amount) : econ.depositPlayer(off, amount);
+                if (deposited) {
+                    String money = com.boopugstudios.dynamicjobseconomy.util.EconomyFormat.money(amount);
+                    Map<String, String> ph = new HashMap<>();
+                    ph.put("player", safeName(off));
+                    ph.put("money", money);
+                    sender.sendMessage(prefix + msg("admin.set_success", ph, "§aSet %player%'s balance to %money%"));
+                    appendHistory(sender.getName(), "SET", safeName(off), amount, null);
+                    try { plugin.getAdminAuditLogger().logEconomyAction(sender, "set", safeName(off), amount); } catch (Throwable ignored) {}
+                    return true;
+                }
+                return false;
+            }
+            default:
+                sender.sendMessage(prefix + msg("admin.invalid_action", null, "§cInvalid action! Use give, take, or set"));
+                return true;
+        }
+    }
+
+    private java.io.File getHistoryFile() {
+        java.io.File dir = plugin.getDataFolder();
+        if (dir == null) {
+            dir = new java.io.File(System.getProperty("java.io.tmpdir"), "dje-data");
+        }
+        if (!dir.exists()) dir.mkdirs();
+        return new java.io.File(dir, "admin-economy-history.log");
+    }
+
+    private void appendHistory(String admin, String action, String target, double amount, String reason) {
+        java.io.File file = getHistoryFile();
+        try (java.io.PrintWriter out = new java.io.PrintWriter(new java.io.FileWriter(file, true))) {
+            String safeReason = reason == null ? "" : reason.replace('\n', ' ').replace('\r', ' ');
+            out.printf("%d|%s|%s|%s|%.2f|%s%n", System.currentTimeMillis(), admin, action, target, amount, safeReason);
+        } catch (java.io.IOException e) {
+            plugin.getLogger().warning("Failed to write history: " + e.getMessage());
+        }
+    }
 }
