@@ -60,7 +60,7 @@ Compatibility: 1.20.4 – 1.21.x  |  Integrations: Vault, WorldGuard, McMMO, Luc
 4. Run `/djeconomy reload` (optional)
 
 #### Verify download integrity (checksums)
-- If a `.sha256` file is provided with the JAR, verify it before deploying.
+- CI publishes a `.sha256` file alongside each JAR artifact. Verify it before deploying.
 - Linux/macOS:
   ```bash
   sha256sum -c DynamicJobsEconomy-<version>.jar.sha256
@@ -70,7 +70,7 @@ Compatibility: 1.20.4 – 1.21.x  |  Integrations: Vault, WorldGuard, McMMO, Luc
   Get-FileHash .\DynamicJobsEconomy-<version>.jar -Algorithm SHA256
   Get-Content .\DynamicJobsEconomy-<version>.jar.sha256
   ```
-  Compare the values; they must match.
+  Compare the hash values; they must match.
 
 **💬 Need Help?** Join our Discord or create a discussion thread!
 

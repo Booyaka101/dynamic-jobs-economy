@@ -592,10 +592,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 .collect(Collectors.toList());
         }
 
-        // Gate argument-level completions by permission for the chosen subcommand
-        if (args.length >= 2 && !isSubAllowed(sender, args[0])) {
-            return new ArrayList<>();
-        }
+        // Note: Root suggestions are permission-filtered above. For argument-level completions,
+        // we provide suggestions regardless of permission so users can discover valid arguments.
 
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("economy")) {
@@ -636,14 +634,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             if (args[0].equalsIgnoreCase("history")) {
                 // 3rd arg is treated as size when 4th is absent
                 return Arrays.asList("1", "5", "10", "20", "50", "100").stream()
-                    .filter(s -> s.startsWith(args[2]))
+                    .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
             }
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("history")) {
             return Arrays.asList("5", "10", "20", "50", "100").stream()
-                .filter(s -> s.startsWith(args[3]))
+                .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
                 .collect(Collectors.toList());
         }
 
