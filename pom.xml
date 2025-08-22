@@ -487,6 +487,7 @@
                                     <artifactSet>
                                         <excludes>
                                             <!-- Exclude heavy optional drivers from the Spigot upload build -->
+                                            <exclude>org.xerial:sqlite-jdbc</exclude>
                                             <exclude>com.mysql:mysql-connector-j</exclude>
                                             <exclude>com.google.protobuf:protobuf-java</exclude>
                                         </excludes>
